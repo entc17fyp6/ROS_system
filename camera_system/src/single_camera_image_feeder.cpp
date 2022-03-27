@@ -46,7 +46,7 @@ int main( int argc, char* argv[] )
 
     ros::init(argc, argv, "single_camera_image_feeder");
     ros::NodeHandle n;
-    camera_frame_publisher = n.advertise<sensor_msgs::Image>("/single_input_frame", 100);
+    camera_frame_publisher = n.advertise<sensor_msgs::Image>("/single_input_frame", 1);
 
     if (n.hasParam("narrow_AutoExposureTimeUpperLimit")){
         n.getParam("narrow_AutoExposureTimeUpperLimit", narrow_AutoExposureTimeUpperLimit_launch_file);
@@ -130,22 +130,14 @@ void Initialize_cam(CInstantCamera& camera){
 }
 
 void publish_image(cv::Mat& frame){
-    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     sensor_msgs::Image input_frame;
-
-    input_frame.header.stamp = ros::Time::now();
-    input_frame.height       = height;
-    input_frame.width        = width;
-    input_frame.encoding     = "rgb8";
-    input_frame.is_bigendian = false; // idont think this is a boolean value
-    input_frame.step         = 3 * width; // Full row length in bytes
-
     cv_bridge::CvImage img_bridge;
     std_msgs::Header header; // empty header
 
+    header.stamp = ros::Time::now(); // time
     img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, frame);
     img_bridge.toImageMsg(input_frame); // from cv_bridge to sensor_msgs::Image
-    // std::cout << input_frame.height << " " << input_frame.width << " " << input_frame.header.stamp <<std::endl;
+    
     camera_frame_publisher.publish(input_frame);
 }
 

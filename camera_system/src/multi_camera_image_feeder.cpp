@@ -216,17 +216,11 @@ void publish_image_sync(cv::Mat& frame, intptr_t cam_id){
 
 void publish_image(cv::Mat& frame, intptr_t cam_id){
     sensor_msgs::Image input_frame;
-
-    input_frame.header.stamp = ros::Time::now();
-    input_frame.height       = height;
-    input_frame.width        = width;
-    input_frame.encoding     = "rgb8";
-    input_frame.is_bigendian = false; // idont think this is a boolean value
-    input_frame.step         = 3 * width; // Full row length in bytes
-
     cv_bridge::CvImage img_bridge;
     std_msgs::Header header; // empty header
 
+
+    header.stamp = ros::Time::now(); // time
     img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, frame);
     img_bridge.toImageMsg(input_frame); // from cv_bridge to sensor_msgs::Image
     

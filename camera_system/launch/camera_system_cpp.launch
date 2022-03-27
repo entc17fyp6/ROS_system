@@ -1,6 +1,6 @@
 <launch>
     <arg name="camera_count" default="2" />   <!-- 0-video_feed, 1-single_camera_feed, 2-multi_camera_feed -->
-    <arg name="camera_feed" default="true" />
+    <arg name="camera_feed" default="false" />
     <arg name="traffic_light_detection" default="true" />
 
     <arg name="frame_rate" default="30" />
