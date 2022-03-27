@@ -1,0 +1,4 @@
+fyp_16/
+**/.vscode/*
+!**/.vscode/settings.json 
+**/__pycache__/*

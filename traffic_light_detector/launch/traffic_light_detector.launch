@@ -1,0 +1,49 @@
+<launch>
+	<arg name="cam_count" default = "2" />
+	<arg name="frame_rate" default = "30" />
+    <!-- <arg name="input_narrow_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_narrow_cam.mp4"/>
+    <arg name="input_wide_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_wide_cam.mp4"/> -->
+
+	<param name="cam_count" value="$(arg cam_count)"/>
+	<param name="frame_rate" value="$(arg frame_rate)"/>
+    <!-- <param name="input_narrow_video" value="$(arg input_narrow_video)"/>
+    <param name="input_wide_video" value="$(arg input_wide_video)"/> -->
+
+    <!-- <node pkg="traffic_light_detector"
+	  	  type="image_feeder"
+	  	  name="image_feeder"
+	  	  output="screen"
+	>
+    </node> -->
+
+
+	<node pkg="traffic_light_detector"
+	  	  type="traffic.py"
+	  	  name="traffic"
+	  	  output="screen"
+	>
+    </node>
+
+
+	<group if="$(eval cam_count == 2)">
+        <node 	pkg="rviz"
+				type="rviz"
+				name="rviz"
+				output="screen"
+				args="-d /home/fyp/catkin_ws/src/traffic_light_detector/rviz/dual_cam_rviz_config.rviz"
+
+        ></node>
+    </group> 
+    <group unless="$(eval cam_count == 2)">
+        <node 	pkg="rviz"
+				type="rviz"
+				name="rviz"
+				output="screen"
+	            args="-d /home/fyp/catkin_ws/src/traffic_light_detector/rviz/single_cam_rviz_config.rviz"
+        ></node>
+    </group> 
+
+
+	
+
+</launch>

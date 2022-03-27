@@ -1,0 +1,71 @@
+<launch>
+    <arg name="camera_count" default="1" />   <!-- 0-video_feed, 1-single_camera_feed, 2-multi_camera_feed -->
+    <arg name="camera_feed" default="false" />
+    <arg name="traffic_light_detection" default="true" />
+
+    <arg name="frame_rate" default="30" />
+    <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />
+    <arg name="wide_AutoExposureTimeUpperLimit" default="1000" />
+
+    <arg name="input_narrow_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_narrow_cam.mp4"/>
+    <arg name="input_wide_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_wide_cam.mp4"/>
+
+    <param name="narrow_AutoExposureTimeUpperLimit" value="$(arg narrow_AutoExposureTimeUpperLimit)"/>
+    <param name="wide_AutoExposureTimeUpperLimit" value="$(arg wide_AutoExposureTimeUpperLimit)"/>
+
+    <param name="camera_count" value="$(arg camera_count)"/>
+    <param name="frame_rate" value="$(arg frame_rate)"/>
+
+    <param name="input_narrow_video" value="$(arg input_narrow_video)"/>
+    <param name="input_wide_video" value="$(arg input_wide_video)"/>
+
+
+
+    <node if="$(eval camera_feed == false)" pkg="camera_system"  
+        type="image_feeder"
+        name="image_feeder"
+        output="screen"
+    >
+    </node>
+
+    <group if="$(eval camera_feed == true)">
+        <node if="$(eval camera_count == 1)" pkg="camera_system"
+            type="single_camera_image_feeder"
+            name="single_camera_image_feeder"
+            output="screen"
+        ></node>
+
+        <node if="$(eval camera_count == 2)" pkg="camera_system"
+            type="multi_camera_image_feeder"
+            name="multi_camera_image_feeder"
+            output="screen"
+        ></node>
+    </group>
+
+    <include if="$(eval traffic_light_detection == true)" file="/home/fyp/catkin_ws/src/traffic_light_detector/launch/traffic_light_detector.launch">
+        <arg name="cam_count" value="$(arg camera_count)" />   
+        <arg name="frame_rate" value="$(arg frame_rate)" />
+    </include>
+    <!-- <group if="$(eval camera_count == 2)">
+        <node if="$(arg visualize)" pkg="rviz"
+            type="rviz"
+            name="rviz"
+            output="screen"
+
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/2_frame_rviz_config.rviz"
+            launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " 
+        ></node>
+    </group> 
+    <group unless="$(eval camera_count == 2)">
+        <node if="$(arg visualize)" pkg="rviz"
+            type="rviz"
+            name="rviz"
+            output="screen"
+
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/1_frame_rviz_config.rviz"
+            launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " 
+        ></node>
+    </group>  -->
+
+
+</launch>

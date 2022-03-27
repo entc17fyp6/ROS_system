@@ -1,0 +1,56 @@
+<launch>
+    <arg name="visualize" default="true" />
+    <arg name="video_feed" default="true" />
+    <arg name="camera_feed" default="false" />
+    <arg name="multi_camera_feed" default="false" />
+    <arg name="narrow_AutoExposureTimeUpperLimit" default="1000" />
+    <arg name="wide_AutoExposureTimeUpperLimit" default="2000" />
+    <arg name="should_filter" default="true" />
+    <arg name="fps" default="10" />
+    <arg name="feeder_start_delay" default="20.0" />
+    <arg name="input_video" default="/home/fyp/Desktop/test_colombo.mp4"/>
+    <arg name="save_output" default="false" />
+    <arg name="output_video" default="/home/fyp/Desktop/2_introduction.mp4"/>
+
+    <param name="input_video" value="$(arg input_video)"/>
+    <param name="narrow_AutoExposureTimeUpperLimit" value="$(arg narrow_AutoExposureTimeUpperLimit)"/>
+    <param name="wide_AutoExposureTimeUpperLimit" value="$(arg wide_AutoExposureTimeUpperLimit)"/>
+    <param name="should_filter" value="$(arg should_filter)"/>
+    <param name="fps" value="$(arg fps)"/>
+    <param name="save_output" value="$(arg save_output)"/>
+    <param name="output_video" value="$(arg output_video)"/>
+
+    <node if="$(arg video_feed)" pkg="camera_system"
+        type="image_feeder.py"
+        name="image_feeder"
+        output="screen"
+                launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " >
+    </node>
+
+    <!-- <node if="$(arg visualize)" pkg="camera_system"
+	  	  type="visualizer.py"
+	  	  name="visualizer"
+	  	  output="screen" 
+	></node> -->
+
+     <node if="$(arg visualize)" pkg="rviz"
+	  	  type="rviz"
+	  	  name="rviz"
+	  	  output="screen"
+                  args="-d /home/fyp/catkin_ws/src/camera_system/rviz/rviz_config.rviz"
+                  launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " 
+	></node>
+
+    <node if="$(arg camera_feed)" pkg="camera_system"
+        type="single_camera_image_feeder.py"
+        name="single_camera_image_feeder"
+        output="screen"
+    ></node>
+
+    <node if="$(arg multi_camera_feed)" pkg="camera_system"
+        type="multi_camera_image_feeder.py"
+        name="multi_camera_image_feeder"
+        output="screen"
+    ></node>
+
+</launch>
