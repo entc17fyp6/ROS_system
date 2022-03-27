@@ -11,6 +11,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include "sensor_msgs/Image.h"
 #include <sensor_msgs/image_encodings.h>
+#include <camera_system/img_pair_msg.h>
 
 // Namespace for using pylon objects.
 using namespace Pylon;
@@ -37,13 +38,19 @@ double AutoGainUpperLimit = 5.0;
 intptr_t narrow_cam_id = 0;
 intptr_t wide_cam_id = 1;
 
+bool filled_buffer[2] = {0};
+cv::Mat frame_buffer[2]; 
+
+
 ros::Publisher narrow_camera_frame_publisher;
 ros::Publisher wide_camera_frame_publisher;
+ros::Publisher dual_input_frame_publisher;
 
 void Initialize_cam(CInstantCamera& camera);
 void background_loop(CInstantCameraArray& cameras);
 void visualize_image(cv::Mat& frame);
 void publish_image(cv::Mat& frame);
+void publish_image_sync(cv::Mat& frame, intptr_t cam_id);
 
 int main( int argc, char* argv[]  )
 {
@@ -52,12 +59,12 @@ int main( int argc, char* argv[]  )
     ros::NodeHandle n;
     
     std::string input_wide_video,input_narrow_video;
-    int frame_rate,camera_count;
+    int frame_rate;
 
     narrow_camera_frame_publisher = n.advertise<sensor_msgs::Image>("/narrow_camera_frame", 1);
     wide_camera_frame_publisher = n.advertise<sensor_msgs::Image>("/wide_camera_frame", 1);
 
-    dual_input_frame_publisher = nh.advertise<camera_system::img_pair_msg>("/dual_input_frames", 100);
+    dual_input_frame_publisher = n.advertise<camera_system::img_pair_msg>("/dual_input_frames", 1);
 
     if (n.hasParam("narrow_AutoExposureTimeUpperLimit")){
         n.getParam("narrow_AutoExposureTimeUpperLimit", narrow_AutoExposureTimeUpperLimit_launch_file);
@@ -160,8 +167,54 @@ void Initialize_cam(CInstantCamera& camera){
 
 }
 
+// def save_video(frame,cam_id):
+//     global filled_buffer
+//     if (filled_buffer[cam_id]==False):
+//         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2YUV_I420)
+//         filled_buffer[cam_id] = True
+
+//         if (should_save_video):
+//             writer_dict[str(cam_id)].write_frame(frame)
+
+//         else:   ## visualize if does not save
+//             cv2.namedWindow(str(cam_id))
+//             cv2.imshow(str(cam_id), frame)
+//             cv2.waitKey(1)
+
+//         if (filled_buffer == [True]*cam_count):
+//             filled_buffer = [False]*cam_count
+
+//     return
+void publish_image_sync(cv::Mat& frame, intptr_t cam_id){
+    if (filled_buffer[cam_id] == false){ 
+        filled_buffer[cam_id] = true;
+
+        frame_buffer[cam_id] = frame;
+
+        if ((filled_buffer[0]=true) & (filled_buffer[1]=true)){  // publish frames and reset the array
+            filled_buffer[0] = false;
+            filled_buffer[1] = false;
+
+            std_msgs::Header header; // empty header
+            header.stamp = ros::Time::now(); // time
+
+            sensor_msgs::ImagePtr narrow_frame_ptr = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, frame_buffer[narrow_cam_id]).toImageMsg();
+            sensor_msgs::ImagePtr wide_frame_ptr = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, frame_buffer[wide_cam_id]).toImageMsg();
+            
+            camera_system::img_pair_msg dual_input_frames;
+            dual_input_frames.im_narrow = *narrow_frame_ptr;
+            dual_input_frames.im_wide = *wide_frame_ptr;
+            
+            dual_input_frame_publisher.publish(dual_input_frames);
+            // narrow_camera_frame_publisher.publish(*narrow_frame_ptr);
+            // wide_camera_frame_publisher.publish(*wide_frame_ptr);
+        }
+
+    }
+
+}
+
 void publish_image(cv::Mat& frame, intptr_t cam_id){
-    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     sensor_msgs::Image input_frame;
 
     input_frame.header.stamp = ros::Time::now();
@@ -218,7 +271,8 @@ public:
             image = cv::Mat(height, width, CV_8UC3, (uint8_t *) image_converted.GetBuffer());
             
             if (should_publish){
-                publish_image(image,cam_id);
+                // publish_image(image,cam_id);
+                publish_image_sync(image,cam_id);
             }
             if (should_visualize){
                 visualize_image(image,cam_id);

@@ -17,7 +17,7 @@ import rospy
 from inferencing import *
 
 from sensor_msgs.msg import Image as SensorImage # done
-from traffic_light_detector.msg import img_pair_msg
+from camera_system.msg import img_pair_msg
 
 traffic_light_publisher = rospy.Publisher('/traffic_light_output', SensorImage , queue_size = 1)
 
@@ -27,6 +27,7 @@ def dual_frame_callback(data):
     global frame_count, total_fps
 
     t1 = time.time()
+
 
     frame_height = data.im_narrow.height
     frame_width = data.im_narrow.width

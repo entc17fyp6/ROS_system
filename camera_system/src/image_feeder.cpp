@@ -38,12 +38,12 @@ int main(int argc, char** argv){
     ros::Rate rate(frame_rate); 
 
     if (camera_count == 1){
-        single_input_frame_publisher = nh.advertise<sensor_msgs::Image>("/single_input_frame", 100);
+        single_input_frame_publisher = nh.advertise<sensor_msgs::Image>("/single_input_frame", 1);
         cap_narrow.open(input_narrow_video); // path to the video
     }
 
     else if (camera_count == 2){  // wide video is published only if 2 cameras are used
-        dual_input_frame_publisher = nh.advertise<camera_system::img_pair_msg>("/dual_input_frames", 100);
+        dual_input_frame_publisher = nh.advertise<camera_system::img_pair_msg>("/dual_input_frames", 1);
         cap_narrow.open(input_narrow_video); // path to the video
         cap_wide.open(input_wide_video); // path to the video
     }
@@ -59,18 +59,18 @@ int main(int argc, char** argv){
             }
 
             cvtColor(frame_narrow, frame_narrow, CV_BGR2RGB);
-            cv::Size s = frame_narrow.size();
+            // cv::Size s = frame_narrow.size();
 
             cv_bridge::CvImage img_bridge;
             sensor_msgs::Image input_frame_narrow; // >> message to be sent
 
             std_msgs::Header header; // empty header
             header.stamp = ros::Time::now(); // time
-            input_frame_narrow.height       = s.height;
-            input_frame_narrow.width        = s.width;
-            input_frame_narrow.encoding     = "rgb8";
-            input_frame_narrow.is_bigendian = false; // idont think this is a boolean value
-            input_frame_narrow.step         = 3 * s.width;
+            // input_frame_narrow.height       = s.height;
+            // input_frame_narrow.width        = s.width;
+            // input_frame_narrow.encoding     = "rgb8";
+            // input_frame_narrow.is_bigendian = false; // idont think this is a boolean value
+            // input_frame_narrow.step         = 3 * s.width;
 
             img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, frame_narrow);
             img_bridge.toImageMsg(input_frame_narrow); // from cv_bridge to sensor_msgs::Image

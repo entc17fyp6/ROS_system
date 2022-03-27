@@ -1,2 +1,0 @@
-sensor_msgs/Image im_narrow
-sensor_msgs/Image im_wide
