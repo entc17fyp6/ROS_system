@@ -12,6 +12,7 @@ from collections import OrderedDict, namedtuple
 import tensorrt as trt 
 import time
 import yaml
+import json
 
 # Load model
 device = torch.device('cuda:0')
@@ -317,6 +318,8 @@ class inference:
 
             s += '%gx%g ' % im.shape[2:]  # print string
 
+            # annotations_json = self.get_json_file(self, det, im)
+
             annotator = Annotator(im0, line_width=3)
             if len(det):
                 # Rescale boxes from img_size to im0 size
@@ -341,7 +344,46 @@ class inference:
         print(s)
         im0 = annotator.result()
         return im0
-           
+    
+    # def get_json_file(self, det, im):
+
+    #     detecttions = {}
+        
+    #     if len(det):
+    
+    #         # Rescale boxes from img_size to im0 size
+    #         # det[:, :4] = self.scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+
+
+    #         # Print results
+    #         for c in det[:, -1].unique():
+    #             n = (det[:, -1] == c).sum()  # detections per class
+    #             s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
+
+    #         # Write results
+    #         bboxes = []
+    #         for *xyxy, conf, cls in reversed(det):
+                
+    #             xmin, ymin, xmax, ymax = int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])
+    #             c = int(cls)  # integer class
+    #             label = f'{self.names[c]} {conf:.2f}'
+
+    #             bbox = {'type':label,
+    #                     'cordinates':{
+    #                         "xmin":xmin,
+    #                         "ymin":ymin,
+    #                         "xmax":xmax,
+    #                         "ymax":ymax
+    #                     }
+    #                 }
+    #             bboxes.append(bbox)
+        
+    #     data = {"label_sample":bboxes}
+    #     json_data = json.dumps(data)
+
+    #     return json_data
+        
+
 
 # if __name__=='__main__':
 #     inference(half=half,sources= sources)

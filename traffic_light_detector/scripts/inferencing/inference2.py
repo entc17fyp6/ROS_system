@@ -11,7 +11,7 @@ import tensorrt as trt
 import time
 import yaml
 from tracking import Sort
-
+import json
 # Load model
 device = torch.device('cuda:0')
 weights = '/media/fyp/sdCard/yolov5/models/yolov5s/448_half_batch_2.engine'
@@ -435,7 +435,7 @@ class inference2:
             track_out_torch = torch.from_numpy(track_out)
 
 
-
+            annotations = self.get_annotations(track_out_torch)
             # Visualization with tracker
             for *xyxy, id_val, cls in track_out_torch:
                 c = int(cls)  # integer class
@@ -443,7 +443,7 @@ class inference2:
                 annotator_wid.box_label(xyxy, label, color=self.colors(0, True))
 
         else:
-
+            annotations = self.get_annotations(wide_pred)
             for *xyxy, conf, cls in wide_pred:
                 c = int(cls)  # integer class
                 label = f'{self.names[c]} {conf:.2f}'
@@ -453,4 +453,26 @@ class inference2:
 
         im_view_wid = annotator_wid.result()
 
-        return im_view_wid
+        return im_view_wid,annotations
+
+    def get_annotations(self, pred):
+
+        annotations = []
+        
+        if len(pred):
+    
+            for *xyxy, conf, cls in (pred):
+                
+                xmin, ymin, xmax, ymax = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
+                c = int(cls)  # integer class
+                label = f'{self.names[c]}'
+
+                annotation = {'type':label,
+                            "xmin":xmin,
+                            "ymin":ymin,
+                            "xmax":xmax,
+                            "ymax":ymax
+                            }
+                annotations.append(annotation)
+
+        return annotations

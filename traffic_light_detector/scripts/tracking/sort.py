@@ -90,8 +90,8 @@ class Sort:
         i = len(self.trackers)
 
         for trk in reversed(self.trackers):
-            if dets.shape[0] == 0:
-                trk.update([],0, img)
+            # if dets.shape[0] == 0:
+            #     trk.update([],0, img)
 
             
 

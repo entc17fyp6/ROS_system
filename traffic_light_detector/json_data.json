@@ -1,0 +1,49 @@
+{
+  "label_sample": [
+    {
+      "type": "Green",
+      "cordinates": {
+        "xmin": 849,
+        "ymin": 507,
+        "xmax": 862,
+        "ymax": 511
+      }
+    },
+    {
+      "type": "Green",
+      "cordinates": {
+        "xmin": 791,
+        "ymin": 507,
+        "xmax": 802,
+        "ymax": 511
+      }
+    },
+    {
+      "type": "Green",
+      "cordinates": {
+        "xmin": 838,
+        "ymin": 507,
+        "xmax": 851,
+        "ymax": 511
+      }
+    },
+    {
+      "type": "Green",
+      "cordinates": {
+        "xmin": 879,
+        "ymin": 524,
+        "xmax": 884,
+        "ymax": 531
+      }
+    },
+    {
+      "type": "Green",
+      "cordinates": {
+        "xmin": 803,
+        "ymin": 507,
+        "xmax": 814,
+        "ymax": 511
+      }
+    }
+  ]
+}
