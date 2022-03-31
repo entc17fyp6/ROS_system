@@ -18,15 +18,14 @@
 
 from __future__ import print_function
 import numpy as np
-from torch import ClassType
-from .kalman_tracker import KalmanBoxTracker
-from .correlation_tracker import CorrelationTracker
+
+from .kalman_tracker import KalmanLaneTracker
 from .data_association import associate_detections_to_trackers
 
 
 class Sort:
 
-    def __init__(self, max_age=3, min_hits=3, use_dlib = False, min_age = 3):
+    def __init__(self, max_age=3, min_hits=3, use_dlib = False):
         """
         Sets key parameters for SORT
         """
@@ -35,32 +34,32 @@ class Sort:
         self.trackers = []
         self.frame_count = 0
         self.previous = {}
-        self.min_age = min_age
 
         self.use_dlib = use_dlib
 
-    def update(self, dets_with_class, img=None):
+    def update(self, dets, img=None):
         """
         Params:
-          dets - a numpy array of detections in the format [[x,y,w,h,score],[x,y,w,h,score],...]
+          dets - a numpy array of detections in the format [[rho,theta],[rho,theta],...]
         Requires: this method must be called once for each frame even with empty detections.
         Returns the a similar array, where the last column is the object ID.
 
         NOTE: The number of objects returned may differ from the number of detections provided.
         """
-
-        dets = dets_with_class[:,:5]
-        det_classes = dets_with_class[:,5]
+        
+        for tracker in self.trackers:
+            print("time since last update ",tracker.time_since_update)
+            print('track id ',tracker.id)
 
         self.frame_count += 1
         # Get predicted locations from existing trackers.
-        trks = np.zeros((len(self.trackers), 5))
+        trks = np.zeros((len(self.trackers), 2))
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict(img) #for kal!
 
-            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
+            trk[:] = [pos[0], pos[1]]
 
             if (np.any(np.isnan(pos))):
                 to_del.append(t)
@@ -77,40 +76,29 @@ class Sort:
             for t, trk in enumerate(self.trackers):
                 if t not in unmatched_trks:
                     d = matched[np.where(matched[:,1] == t)[0], 0]
-                    trk.update(dets[d,:][0],det_classes[d], img)
+                    trk.update(dets[d,:][0])
 
 
             # Create and initialise new trackers for unmatched detections
             for i in unmatched_dets:
-                if not self.use_dlib:
-                    trk = KalmanBoxTracker(dets[i,:], det_classes[i])
-                else:
-                    trk = CorrelationTracker(dets[i,:],img)
+
+                trk = KalmanLaneTracker(dets[i,:])
                 self.trackers.append(trk)
 
         i = len(self.trackers)
 
         for trk in reversed(self.trackers):
-            #if dets.shape[0] == 0:
-                #trk.update([],0, img)
-
-            
-
-            # if trk.classtype == None:
-            #     classtypenp = np.array(0)
 
             d = trk.get_state()
-            # if ((trk.time_since_update <= 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits)):
-            if trk.age > self.min_age:
-                cancat = np.concatenate((d,[trk.id+1]))
-                classtypenp = np.array(trk.classtype)
 
-                ret.append(np.append(cancat,classtypenp).reshape(1,-1)) # +1 as MOT benchmark requires positive
+            cancat = np.append(d,[trk.id+1])
+
+            ret.append(cancat.reshape(1,-1))
             i -= 1
 
             # Remove dead tracklet
             if trk.time_since_update> self.max_age:
-                # print("popped")
+                print("popped")
                 self.trackers.pop(i)
 
         if len(ret) > 0:

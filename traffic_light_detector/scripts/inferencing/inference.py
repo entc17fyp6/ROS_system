@@ -12,7 +12,7 @@ from collections import OrderedDict, namedtuple
 import tensorrt as trt 
 import time
 import yaml
-import json
+from tracking import Sort
 
 # Load model
 device = torch.device('cuda:0')
@@ -22,7 +22,6 @@ imgsz = (448, 448)
 view_img = True
 half = True
 save_dir = 'runs/detect/experiment'
-
 
 class Colors:
 
@@ -117,11 +116,15 @@ class Annotator:
         return np.asarray(self.im)
 
 class inference:
-    def __init__(self):
+    def __init__(self, use_tracker = False):
 
         self.colors = Colors()
         self.model = DetectMultiBackend(weights, device=device, data=data)
         self.names = self.model.names
+
+        self.use_tracker = use_tracker
+        if use_tracker:
+            self.tracker = Sort(max_age=4, min_hits=4, use_dlib = False, min_age = 3)
 
         # Half
         # self.half = True
@@ -188,6 +191,16 @@ class inference:
         # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
         inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
         return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
+
+    def size_conf_filter(self, det, min_size = 5, min_conf = 0.8):
+        choice = det[:,4] > min_conf
+        conf_filtered = det[choice]
+        
+        min_values = torch.minimum(abs(conf_filtered[:,3]-conf_filtered[:,1]),abs(conf_filtered[:,2]-conf_filtered[:,0]))
+        choice_size = min_values > min_size
+        filtered = conf_filtered[choice_size]
+        return filtered
+
 
 
     def non_max_suppression(self,prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
@@ -308,84 +321,40 @@ class inference:
 
         # NMS
         pred = self.non_max_suppression(prediction = pred)
+        out_pred = pred[0]
         self.dt[2] += self.time_sync() - t3
         s = "Detection frame: "
 
+        out_pred[:, :4] = self.scale_coords(im.shape[2:], out_pred[:, :4], im0.shape).round()
+        annotator_frame = Annotator(im0, line_width=2)
 
-        # Process predictions
-        for i, det in enumerate(pred):  # per image
-            self.seen += 1
+        if self.use_tracker:
 
-            s += '%gx%g ' % im.shape[2:]  # print string
+            filtered_dets = self.size_conf_filter(out_pred, min_size = 0, min_conf = 0.9)
 
-            # annotations_json = self.get_json_file(self, det, im)
-
-            annotator = Annotator(im0, line_width=3)
-            if len(det):
-                # Rescale boxes from img_size to im0 size
-                det[:, :4] = self.scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+            # Tracker
+            numpy_boxes = filtered_dets.cpu().numpy()
+            track_out = self.tracker.update(numpy_boxes)
+            track_out_torch = torch.from_numpy(track_out)
 
 
-                # Print results
-                for c in det[:, -1].unique():
-                    n = (det[:, -1] == c).sum()  # detections per class
-                    s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
-                # Write results
-                for *xyxy, conf, cls in reversed(det):
+            # Visualization with tracker
+            for *xyxy, id_val, cls in track_out_torch:
+                c = int(cls)  # integer class
+                label = str(int(id_val))
+                annotator_frame.box_label(xyxy, label, color=self.colors(0, True))
 
-                    if view_img:  # Add bbox to image
-                        c = int(cls)  # integer class
-                        label = f'{self.names[c]} {conf:.2f}'
-                        annotator.box_label(xyxy, label, color=self.colors(c, True))
+        else:
 
+            for *xyxy, conf, cls in out_pred:
+                c = int(cls)  # integer class
+                label = f'{self.names[c]} {conf:.2f}'
+                # label = "out"
+                annotator_frame.box_label(xyxy, label, color=self.colors(c, True))
+            
 
-        # Stream results
-        print(s)
-        im0 = annotator.result()
-        return im0
-    
-    # def get_json_file(self, det, im):
+        im_view_wid = annotator_frame.result()
 
-    #     detecttions = {}
-        
-    #     if len(det):
-    
-    #         # Rescale boxes from img_size to im0 size
-    #         # det[:, :4] = self.scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-
-
-    #         # Print results
-    #         for c in det[:, -1].unique():
-    #             n = (det[:, -1] == c).sum()  # detections per class
-    #             s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
-    #         # Write results
-    #         bboxes = []
-    #         for *xyxy, conf, cls in reversed(det):
-                
-    #             xmin, ymin, xmax, ymax = int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])
-    #             c = int(cls)  # integer class
-    #             label = f'{self.names[c]} {conf:.2f}'
-
-    #             bbox = {'type':label,
-    #                     'cordinates':{
-    #                         "xmin":xmin,
-    #                         "ymin":ymin,
-    #                         "xmax":xmax,
-    #                         "ymax":ymax
-    #                     }
-    #                 }
-    #             bboxes.append(bbox)
-        
-    #     data = {"label_sample":bboxes}
-    #     json_data = json.dumps(data)
-
-    #     return json_data
-        
-
-
-# if __name__=='__main__':
-#     inference(half=half,sources= sources)
-def abdc():
-    return "test"
+        return im_view_wid
+           

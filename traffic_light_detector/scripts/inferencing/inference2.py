@@ -121,7 +121,7 @@ class inference2:
         self.model = DetectMultiBackend(weights, device=device, data=data)
         self.use_tracker = use_tracker
         if use_tracker:
-            self.tracker = Sort(max_age=4, min_hits=4, use_dlib = False)
+            self.tracker = Sort(max_age=10, min_hits=4, use_dlib = False, min_age = 5)
         self.names = self.model.names
 
         # Half
@@ -188,8 +188,17 @@ class inference2:
         inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
         return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
 
+    def size_conf_filter(self, det, min_size = 5, min_conf = 0.8):
+        choice = det[:,4] > min_conf
+        conf_filtered = det[choice]
+        
+        min_values = torch.minimum(abs(conf_filtered[:,3]-conf_filtered[:,1]),abs(conf_filtered[:,2]-conf_filtered[:,0]))
+        choice_size = min_values > min_size
+        filtered = conf_filtered[choice_size]
+        return filtered
 
-    def non_max_suppression(self,prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
+
+    def non_max_suppression(self,prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=True, multi_label=False,
                             labels=(), max_det=300):
         """Runs Non-Maximum Suppression (NMS) on inference results
 
@@ -429,8 +438,10 @@ class inference2:
 
         if self.use_tracker:
 
+            filtered_dets = self.size_conf_filter(wide_pred, min_size = 0, min_conf = 0.9)
+
             # Tracker
-            numpy_boxes = wide_pred.cpu().numpy()
+            numpy_boxes = filtered_dets.cpu().numpy()
             track_out = self.tracker.update(numpy_boxes)
             track_out_torch = torch.from_numpy(track_out)
 
@@ -439,7 +450,7 @@ class inference2:
             # Visualization with tracker
             for *xyxy, id_val, cls in track_out_torch:
                 c = int(cls)  # integer class
-                label = "box"
+                label = str(int(id_val))
                 annotator_wid.box_label(xyxy, label, color=self.colors(0, True))
 
         else:

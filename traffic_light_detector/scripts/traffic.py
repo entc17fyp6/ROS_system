@@ -62,7 +62,7 @@ def dual_frame_callback(data):
 
 
     # json_annotations = json.dumps(annotations,indent=2)
-    traffic_light_annotation_publisher.publish(annotations_array)
+    # traffic_light_annotation_publisher.publish(annotations_array)
     # with open('/home/fyp/catkin_ws/src/traffic_light_detector/json_data.json','w') as json_file:
         #     json_file.write(json_annotations)
 
