@@ -26,7 +26,7 @@ from .data_association import associate_detections_to_trackers
 
 class Sort:
 
-    def __init__(self, max_age=3, min_hits=3, use_dlib = False):
+    def __init__(self, max_age=3, min_hits=3, use_dlib = False, min_age = 3):
         """
         Sets key parameters for SORT
         """
@@ -35,6 +35,7 @@ class Sort:
         self.trackers = []
         self.frame_count = 0
         self.previous = {}
+        self.min_age = min_age
 
         self.use_dlib = use_dlib
 
@@ -90,8 +91,8 @@ class Sort:
         i = len(self.trackers)
 
         for trk in reversed(self.trackers):
-            if dets.shape[0] == 0:
-                trk.update([],0, img)
+            #if dets.shape[0] == 0:
+                #trk.update([],0, img)
 
             
 
@@ -100,14 +101,16 @@ class Sort:
 
             d = trk.get_state()
             # if ((trk.time_since_update <= 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits)):
-            cancat = np.concatenate((d,[trk.id+1]))
-            classtypenp = np.array(trk.classtype)
+            if trk.age > self.min_age:
+                cancat = np.concatenate((d,[trk.id+1]))
+                classtypenp = np.array(trk.classtype)
 
-            ret.append(np.append(cancat,classtypenp).reshape(1,-1)) # +1 as MOT benchmark requires positive
+                ret.append(np.append(cancat,classtypenp).reshape(1,-1)) # +1 as MOT benchmark requires positive
             i -= 1
 
             # Remove dead tracklet
-            if trk.time_since_update > self.max_age:
+            if trk.time_since_update> self.max_age:
+                # print("popped")
                 self.trackers.pop(i)
 
         if len(ret) > 0:
