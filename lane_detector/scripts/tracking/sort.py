@@ -47,9 +47,9 @@ class Sort:
         NOTE: The number of objects returned may differ from the number of detections provided.
         """
         
-        for tracker in self.trackers:
-            print("time since last update ",tracker.time_since_update)
-            print('track id ',tracker.id)
+        # for tracker in self.trackers:
+            # print("time since last update ",tracker.time_since_update)
+            # print('track id ',tracker.id)
 
         self.frame_count += 1
         # Get predicted locations from existing trackers.
@@ -98,7 +98,7 @@ class Sort:
 
             # Remove dead tracklet
             if trk.time_since_update> self.max_age:
-                print("popped")
+                # print("popped")
                 self.trackers.pop(i)
 
         if len(ret) > 0:

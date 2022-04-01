@@ -62,7 +62,7 @@ def dual_frame_callback(data):
 
 
     # json_annotations = json.dumps(annotations,indent=2)
-    # traffic_light_annotation_publisher.publish(annotations_array)
+    traffic_light_annotation_publisher.publish(annotations_array)
     # with open('/home/fyp/catkin_ws/src/traffic_light_detector/json_data.json','w') as json_file:
         #     json_file.write(json_annotations)
 
@@ -78,8 +78,6 @@ def single_frame_callback(data):
     
     frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
     frame = inference.inference(frame)
-    # cv2.imshow(frame, "aa")
-    # cv2.waitKey(0)
     
     out_frame = SensorImage() # done
     out_frame.header.stamp = rospy.Time.now() # done
@@ -108,7 +106,7 @@ def traffic_light_detector():
 if __name__ == '__main__':
     try:
         inference = inference()
-        inference2 = inference2(use_tracker=True)
+        inference2 = inference2(use_tracker=False)
         traffic_light_detector()
     except rospy.ROSInterruptException:
         pass

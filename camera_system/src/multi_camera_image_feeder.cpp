@@ -206,8 +206,8 @@ void publish_image_sync(cv::Mat& frame, intptr_t cam_id){
             dual_input_frames.im_wide = *wide_frame_ptr;
             
             dual_input_frame_publisher.publish(dual_input_frames);
-            // narrow_camera_frame_publisher.publish(*narrow_frame_ptr);
-            // wide_camera_frame_publisher.publish(*wide_frame_ptr);
+            narrow_camera_frame_publisher.publish(*narrow_frame_ptr);
+            wide_camera_frame_publisher.publish(*wide_frame_ptr);
         }
 
     }

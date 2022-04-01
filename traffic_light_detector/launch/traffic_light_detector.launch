@@ -35,7 +35,7 @@
 	<group if="$(eval cam_count == 2)">
         <node 	pkg="rviz"
 				type="rviz"
-				name="rviz"
+				name="$(anon rviz)"
 				output="screen"
 				args="-d /home/fyp/catkin_ws/src/traffic_light_detector/rviz/dual_cam_rviz_config.rviz"
 
@@ -44,7 +44,7 @@
     <group unless="$(eval cam_count == 2)">
         <node 	pkg="rviz"
 				type="rviz"
-				name="rviz"
+				name="$(anon rviz)"
 				output="screen"
 	            args="-d /home/fyp/catkin_ws/src/traffic_light_detector/rviz/single_cam_rviz_config.rviz"
         ></node>

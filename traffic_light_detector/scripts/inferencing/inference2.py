@@ -121,7 +121,7 @@ class inference2:
         self.model = DetectMultiBackend(weights, device=device, data=data)
         self.use_tracker = use_tracker
         if use_tracker:
-            self.tracker = Sort(max_age=10, min_hits=4, use_dlib = False, min_age = 5)
+            self.tracker = Sort(max_age=10, min_hits=4, use_dlib = False, min_age = 0)
         self.names = self.model.names
 
         # Half

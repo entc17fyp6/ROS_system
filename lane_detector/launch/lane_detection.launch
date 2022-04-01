@@ -1,0 +1,21 @@
+<launch>
+	<arg name="frame_rate" default = "30" />
+	<param name="frame_rate" value="$(arg frame_rate)"/>
+
+	<node pkg="lane_detector"
+	  	  type="lane_detector.py"
+	  	  name="lane_detector"
+	  	  output="screen"
+	>
+    </node>
+
+
+    <node 	pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/lane_detector/rviz/single_cam_rviz_config.rviz"
+
+    ></node>
+
+</launch>

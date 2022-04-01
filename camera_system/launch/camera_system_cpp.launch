@@ -2,6 +2,7 @@
     <arg name="camera_count" default="2" />   <!-- 0-video_feed, 1-single_camera_feed, 2-multi_camera_feed -->
     <arg name="camera_feed" default="false" />
     <arg name="traffic_light_detection" default="true" />
+    <arg name="lane_detection" default="true" />
 
     <arg name="frame_rate" default="30" />
     <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />
@@ -46,26 +47,11 @@
         <arg name="cam_count" value="$(arg camera_count)" />   
         <arg name="frame_rate" value="$(arg frame_rate)" />
     </include>
-    <!-- <group if="$(eval camera_count == 2)">
-        <node if="$(arg visualize)" pkg="rviz"
-            type="rviz"
-            name="rviz"
-            output="screen"
 
-            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/2_frame_rviz_config.rviz"
-            launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " 
-        ></node>
-    </group> 
-    <group unless="$(eval camera_count == 2)">
-        <node if="$(arg visualize)" pkg="rviz"
-            type="rviz"
-            name="rviz"
-            output="screen"
+    <include if="$(eval lane_detection == true)" file="/home/fyp/catkin_ws/src/lane_detector/launch/lane_detection.launch">  
+        <arg name="frame_rate" value="$(arg frame_rate)" />
+    </include>
 
-            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/1_frame_rviz_config.rviz"
-            launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " 
-        ></node>
-    </group>  -->
 
 
 </launch>

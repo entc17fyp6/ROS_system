@@ -32,6 +32,8 @@ int main(int argc, char** argv){
 
 
     ros::Publisher single_input_frame_publisher,dual_input_frame_publisher;
+    ros::Publisher narrow_camera_frame_publisher;
+    ros::Publisher wide_camera_frame_publisher;
     cv::VideoCapture cap_wide, cap_narrow;
     cv::Mat frame_narrow, frame_wide;
     
@@ -39,11 +41,15 @@ int main(int argc, char** argv){
 
     if (camera_count == 1){
         single_input_frame_publisher = nh.advertise<sensor_msgs::Image>("/single_input_frame", 1);
+        wide_camera_frame_publisher = nh.advertise<sensor_msgs::Image>("/wide_camera_frame", 1);
         cap_narrow.open(input_narrow_video); // path to the video
     }
 
     else if (camera_count == 2){  // wide video is published only if 2 cameras are used
         dual_input_frame_publisher = nh.advertise<camera_system::img_pair_msg>("/dual_input_frames", 1);
+        narrow_camera_frame_publisher = nh.advertise<sensor_msgs::Image>("/narrow_camera_frame", 1);
+        wide_camera_frame_publisher = nh.advertise<sensor_msgs::Image>("/wide_camera_frame", 1);
+
         cap_narrow.open(input_narrow_video); // path to the video
         cap_wide.open(input_wide_video); // path to the video
     }
@@ -66,15 +72,11 @@ int main(int argc, char** argv){
 
             std_msgs::Header header; // empty header
             header.stamp = ros::Time::now(); // time
-            // input_frame_narrow.height       = s.height;
-            // input_frame_narrow.width        = s.width;
-            // input_frame_narrow.encoding     = "rgb8";
-            // input_frame_narrow.is_bigendian = false; // idont think this is a boolean value
-            // input_frame_narrow.step         = 3 * s.width;
 
             img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, frame_narrow);
             img_bridge.toImageMsg(input_frame_narrow); // from cv_bridge to sensor_msgs::Image
             single_input_frame_publisher.publish(input_frame_narrow);
+            wide_camera_frame_publisher.publish(input_frame_narrow);  // for lane detetion if only use single frame
         }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -98,6 +100,8 @@ int main(int argc, char** argv){
             dual_input_frames.im_wide = *wide_frame_ptr;
             
             dual_input_frame_publisher.publish(dual_input_frames);
+            narrow_camera_frame_publisher.publish(*narrow_frame_ptr);
+            wide_camera_frame_publisher.publish(*wide_frame_ptr);
 
         }
 ////////////////////////////////////////////////////////////////////////////////////////////
