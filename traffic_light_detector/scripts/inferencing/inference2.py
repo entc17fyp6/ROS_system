@@ -115,12 +115,14 @@ class Colors:
         return tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4))
 
 class inference2:
-    def  __init__(self, use_tracker = False, mobile_app_enable = False):
+    def  __init__(self, use_tracker = False, mobile_app_enable = False, traffic_light_annotator_app_enable=False):
 
         self.colors = Colors()
         self.model = DetectMultiBackend(weights, device=device, data=data)
         self.use_tracker = use_tracker
         self.mobile_app_enable = mobile_app_enable
+        self.traffic_light_annotator_app_enable = traffic_light_annotator_app_enable
+        self.old_annotation_calc_time = time.time()
         if use_tracker:
             self.tracker = Sort(max_age=10, min_hits=4, use_dlib = False, min_age = 0)
         self.names = self.model.names
@@ -131,7 +133,6 @@ class inference2:
         self.stride = 64
         cudnn.benchmark = True  # set True to speed up constant image size inference
 
-        self.fps = 30
 
         self.camera_mtx_narrow, self.dist_coff_narrow, self.newcameramtx_narrow, self.homography_matrix = self.get_camera_param(narrow_camera_data_file,homography_matrix_file)
 
@@ -380,7 +381,6 @@ class inference2:
         return torch.from_numpy(dst_final)
 
     def inference2(self, img_narrow, img_wide):
-        time.sleep(1 / self.fps)
 
         # Convert
         img_narrow_ = cv2.resize(img_narrow.copy(),imgsz,interpolation=cv2.INTER_LINEAR)
@@ -408,7 +408,7 @@ class inference2:
 
 
         # NMS
-        print('pred.shape ', pred.shape)
+        # print('pred.shape ', pred.shape)
   
         pred = self.non_max_suppression(prediction = pred)
         self.dt[2] += self.time_sync() - t3
@@ -418,7 +418,16 @@ class inference2:
         wide_pred = pred[0]
         wide_pred[:, :4] = self.scale_coords(im.shape[2:], wide_pred[:, :4], img_wide.shape).round()
         narrow_pred[:, :4] = self.scale_coords(im.shape[2:], narrow_pred[:, :4], img_narrow.shape).round()
-        narrow_pred.type
+        
+
+        ## send narrow image with annotations for the annotation app if there are bboxes and with 3 second gap
+        if (self.traffic_light_annotator_app_enable and ((time.time()-self.old_annotation_calc_time)>3) and (len(narrow_pred)>0)):
+            narrow_annotations = self.get_annotations(narrow_pred)
+            self.old_annotation_calc_time = time.time()
+        else:
+            narrow_annotations = None
+
+
 
         # Converting N to No
         if len(narrow_pred):
@@ -447,7 +456,7 @@ class inference2:
             track_out_torch = torch.from_numpy(track_out)
 
             if (self.mobile_app_enable):
-                annotations = self.get_annotations(track_out_torch)
+                all_annotations = self.get_annotations(track_out_torch)
             # Visualization with tracker
             for *xyxy, id_val, cls in track_out_torch:
                 c = int(cls)  # integer class
@@ -456,7 +465,7 @@ class inference2:
 
         else:
             if (self.mobile_app_enable):
-                annotations = self.get_annotations(wide_pred)
+                all_annotations = self.get_annotations(wide_pred)
             for *xyxy, conf, cls in wide_pred:
                 c = int(cls)  # integer class
                 label = f'{self.names[c]} {conf:.2f}'
@@ -466,10 +475,13 @@ class inference2:
 
         im_view_wid = annotator_wid.result()
 
+        output_dict = {"output_img":im_view_wid, "all_annotations":None, "narrow_annotations":None}
+        if (self.traffic_light_annotator_app_enable):
+            output_dict["narrow_annotations"] = narrow_annotations
         if (self.mobile_app_enable):
-            return im_view_wid,annotations, img_wide
-        else:
-            return im_view_wid
+            output_dict['all_annotations'] = all_annotations
+
+        return output_dict
 
     def get_annotations(self, pred):
 

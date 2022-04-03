@@ -2,7 +2,7 @@
 
 from flask import Flask, jsonify
 import rospy
-from traffic_light_detector.msg import bbox_msg, bbox_array_msg
+from traffic_light_detector.msg import bbox_msg, bbox_array_msg, annotation_app_msg
 from sensor_msgs.msg import Image as SensorImage 
 import json
 import urllib3
@@ -11,11 +11,13 @@ import numpy as np
 app = Flask(__name__)
 http = urllib3.PoolManager()
 
-def raw_wide_img_user(data):
-    frame_height = data.height
-    frame_width = data.width
+def annotation_app_data_user(data):
+    bboxes = data.bbox_array
+    frame_height = data.img_narrow.height
+    frame_width = data.img_narrow.width
     
-    frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
+    frame_binary = data.img_narrow.data
+    frame = np.frombuffer(data.img_narrow.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
     print("app received the frame", frame.shape)
 
 
@@ -76,7 +78,7 @@ def mobile_app():
     rospy.loginfo("mobile app initiated...")
     rospy.init_node('mobile_app', anonymous = True)
     rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, annotation_annotation_user)
-    rospy.Subscriber('/raw_wide_img', SensorImage, raw_wide_img_user )
+    rospy.Subscriber('/annotation_app_data', annotation_app_msg, annotation_app_data_user )
     rospy.spin()
 
 

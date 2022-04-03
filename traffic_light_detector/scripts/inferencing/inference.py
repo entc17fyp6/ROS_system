@@ -116,27 +116,26 @@ class Annotator:
         return np.asarray(self.im)
 
 class inference:
-    def __init__(self, use_tracker = False):
+    def __init__(self, use_tracker = False,  mobile_app_enable = False, traffic_light_annotator_app_enable=False):
 
         self.colors = Colors()
         self.model = DetectMultiBackend(weights, device=device, data=data)
         self.names = self.model.names
 
+        self.traffic_light_annotator_app_enable = traffic_light_annotator_app_enable
+        self.old_annotation_calc_time = time.time()
+
         self.use_tracker = use_tracker
         if use_tracker:
             self.tracker = Sort(max_age=4, min_hits=4, use_dlib = False, min_age = 3)
+
+        self.mobile_app_enable = mobile_app_enable
 
         # Half
         # self.half = True
         self.half = half & (device.type != 'cpu')  # FP16 supported on limited backends with CUDA
         self.stride = 64
         cudnn.benchmark = True  # set True to speed up constant image size inference
-
-        # cap = cv2.VideoCapture(sources[0])
-        # assert cap.isOpened(), 'Failed to open'
-        self.fps = 30
-        # self.fps = max(cap.get(cv2.CAP_PROP_FPS) % 100, 0) or 30.0  # 30 FPS fallback
-
 
         # Run inference
         self.model.warmup(imgsz=(1, 3, *imgsz), half=half)  # warmup
@@ -295,8 +294,6 @@ class inference:
 
 
     def inference(self, im0):
-        time.sleep(1 / self.fps)
-        # r, im0 = cap.read()
 
         # Convert
         im = cv2.resize(im0.copy(),imgsz,interpolation=cv2.INTER_LINEAR)
@@ -328,6 +325,15 @@ class inference:
         out_pred[:, :4] = self.scale_coords(im.shape[2:], out_pred[:, :4], im0.shape).round()
         annotator_frame = Annotator(im0, line_width=2)
 
+        ## send narrow image with annotations for the annotation app if there are bboxes and with 3 second gap
+        if (self.traffic_light_annotator_app_enable and ((time.time()-self.old_annotation_calc_time)>3) and (len(out_pred)>0)):
+            all_annotations = self.get_annotations(out_pred)
+            annotation_app_data_available = True
+            self.old_annotation_calc_time = time.time()
+        else:
+            all_annotations = None
+            annotation_app_data_available = False
+
         if self.use_tracker:
 
             filtered_dets = self.size_conf_filter(out_pred, min_size = 0, min_conf = 0.9)
@@ -337,7 +343,8 @@ class inference:
             track_out = self.tracker.update(numpy_boxes)
             track_out_torch = torch.from_numpy(track_out)
 
-
+            if (self.mobile_app_enable and (all_annotations==None)):
+                all_annotations = self.get_annotations(track_out_torch)
 
             # Visualization with tracker
             for *xyxy, id_val, cls in track_out_torch:
@@ -346,6 +353,8 @@ class inference:
                 annotator_frame.box_label(xyxy, label, color=self.colors(0, True))
 
         else:
+            if (self.mobile_app_enable and (all_annotations==None)):
+                all_annotations = self.get_annotations(out_pred)
 
             for *xyxy, conf, cls in out_pred:
                 c = int(cls)  # integer class
@@ -356,5 +365,30 @@ class inference:
 
         im_view_wid = annotator_frame.result()
 
-        return im_view_wid
+        output_dict = {"output_img":im_view_wid, "all_annotations":None, "annotation_app_data_available":annotation_app_data_available}
+        if (self.mobile_app_enable or self.traffic_light_annotator_app_enable):
+            output_dict['all_annotations'] = all_annotations
+
+        return output_dict
            
+    def get_annotations(self, pred):
+
+        annotations = []
+        
+        if len(pred):
+    
+            for *xyxy, conf, cls in (pred):
+                
+                xmin, ymin, xmax, ymax = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
+                c = int(cls)  # integer class
+                label = f'{self.names[c]}'
+
+                annotation = {'type':label,
+                            "xmin":xmin,
+                            "ymin":ymin,
+                            "xmax":xmax,
+                            "ymax":ymax
+                            }
+                annotations.append(annotation)
+
+        return annotations

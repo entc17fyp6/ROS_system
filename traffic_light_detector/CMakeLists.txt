@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   message_generation
+  sensor_msgs
 )
 
 # find_package(OpenCV REQUIRED)
@@ -58,6 +59,7 @@ add_message_files(
   FILES
   bbox_msg.msg
   bbox_array_msg.msg
+  annotation_app_msg.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -79,6 +81,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   geometry_msgs
+  sensor_msgs
 
 )
 

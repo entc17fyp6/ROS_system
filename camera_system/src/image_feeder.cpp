@@ -58,6 +58,7 @@ int main(int argc, char** argv){
     while (1)
     // while (cap.read(frame))
     {
+        std::cout << "image feed" << std::endl;
         if (camera_count == 1){
 
             if(cap_narrow.read(frame_narrow)==false){
