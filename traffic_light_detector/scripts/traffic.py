@@ -18,8 +18,10 @@ from inferencing import *
 
 from sensor_msgs.msg import Image as SensorImage # done
 from camera_system.msg import img_pair_msg
+from traffic_light_detector.msg import bbox_msg, bbox_array_msg
 
 traffic_light_publisher = rospy.Publisher('/traffic_light_output', SensorImage , queue_size = 1)
+traffic_light_annotation_publisher = rospy.Publisher('/traffic_light_annotation', bbox_array_msg, queue_size=1)
 
 print("Started traffic light Detector")
 
@@ -31,9 +33,7 @@ def dual_frame_callback(data):
     
     narrow_frame = np.frombuffer(data.im_narrow.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
     wide_frame = np.frombuffer(data.im_wide.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
-    t1 = time.time()
-    frame = inference2.inference2(narrow_frame,wide_frame)
-    t2 = time.time()
+    frame, annotations = inference2.inference2(narrow_frame,wide_frame)
 
     out_frame = SensorImage() # done
     out_frame.header.stamp = rospy.Time.now() # done
@@ -44,7 +44,25 @@ def dual_frame_callback(data):
     out_frame.step = 3 * frame.shape[1]       # done
     out_frame.data = frame.tobytes()
 
-    traffic_light_publisher.publish(out_frame)    
+    traffic_light_publisher.publish(out_frame)   
+
+    annotations_array = bbox_array_msg()
+    annotations_array.box_count = len(annotations)
+    for annotation in annotations:
+        bbox_data = bbox_msg()
+        bbox_data.type = annotation['type']
+        bbox_data.xmin = int(annotation['xmin'])
+        bbox_data.ymin = int(annotation['ymin'])
+        bbox_data.xmax = int(annotation['xmax'])
+        bbox_data.ymax = int(annotation['ymax'])
+        annotations_array.bbox_array.append(bbox_data)
+
+
+    # json_annotations = json.dumps(annotations,indent=2)
+    # traffic_light_annotation_publisher.publish(annotations_array)
+    # with open('/home/fyp/catkin_ws/src/traffic_light_detector/json_data.json','w') as json_file:
+        #     json_file.write(json_annotations)
+
 
 def single_frame_callback(data):
 
@@ -60,8 +78,6 @@ def single_frame_callback(data):
     # cv2.imshow(frame, "aa")
     # cv2.waitKey(0)
     
-    t2 = time.time()
-
     out_frame = SensorImage() # done
     out_frame.header.stamp = rospy.Time.now() # done
     out_frame.height = frame.shape[0]         # done
@@ -71,7 +87,8 @@ def single_frame_callback(data):
     out_frame.step = 3 * frame.shape[1]       # done
     out_frame.data = frame.tobytes()
 
-    traffic_light_publisher.publish(out_frame)    
+    traffic_light_publisher.publish(out_frame)
+
 
 def traffic_light_detector():
     rospy.loginfo("Traffic light detector initiated...")

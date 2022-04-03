@@ -24,6 +24,13 @@
 	>
     </node>
 
+	<node pkg="traffic_light_detector"
+	  	  type="test_app_2.py"
+	  	  name="mobile_app"
+	  	  output="screen"
+	>
+    </node>
+
 
 	<group if="$(eval cam_count == 2)">
         <node 	pkg="rviz"
