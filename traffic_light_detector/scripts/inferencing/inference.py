@@ -127,7 +127,7 @@ class inference:
 
         self.use_tracker = use_tracker
         if use_tracker:
-            self.tracker = Sort(max_age=4, min_hits=4, use_dlib = False, min_age = 3)
+            self.tracker = Sort(max_age=5, min_hits=4, use_dlib = False, min_age = 4)
 
         self.mobile_app_enable = mobile_app_enable
 
@@ -336,7 +336,7 @@ class inference:
 
         if self.use_tracker:
 
-            filtered_dets = self.size_conf_filter(out_pred, min_size = 0, min_conf = 0.9)
+            filtered_dets = self.size_conf_filter(out_pred, min_size = 15, min_conf = 0.8)
 
             # Tracker
             numpy_boxes = filtered_dets.cpu().numpy()

@@ -124,7 +124,7 @@ class inference2:
         self.traffic_light_annotator_app_enable = traffic_light_annotator_app_enable
         self.old_annotation_calc_time = time.time()
         if use_tracker:
-            self.tracker = Sort(max_age=10, min_hits=4, use_dlib = False, min_age = 0)
+            self.tracker = Sort(max_age=5, min_hits=4, use_dlib = False, min_age = 0)
         self.names = self.model.names
 
         # Half
@@ -135,6 +135,12 @@ class inference2:
 
 
         self.camera_mtx_narrow, self.dist_coff_narrow, self.newcameramtx_narrow, self.homography_matrix = self.get_camera_param(narrow_camera_data_file,homography_matrix_file)
+
+        self.camera_bounding = torch.tensor([[0,0,1920,1080]], device=torch.device("cuda"))
+        self.camera_bounding = self.camera_transform(self.camera_bounding,self.homography_matrix,self.camera_mtx_narrow, self.dist_coff_narrow, self.newcameramtx_narrow)
+        self.camera_bounding = self.camera_bounding.cpu().numpy()
+        self.camera_bounding = self.camera_bounding[0].tolist()
+        self.camera_bounding = list(map(int,self.camera_bounding))
 
         self.model.warmup(imgsz=(2, 3, *imgsz), half=half)  # warmup
         self.dt, self.seen = [0.0, 0.0, 0.0], 0
@@ -408,7 +414,6 @@ class inference2:
 
 
         # NMS
-        # print('pred.shape ', pred.shape)
   
         pred = self.non_max_suppression(prediction = pred)
         self.dt[2] += self.time_sync() - t3
@@ -435,7 +440,7 @@ class inference2:
 
         # Bounding box control algorithm
         rev_wide_det = reversed(wide_pred)
-        keep = torch.logical_not(self.check_position(rev_wide_det[:,:4],707, 387,1160, 654))
+        keep = torch.logical_not(self.check_position(rev_wide_det[:,:4],self.camera_bounding[0], self.camera_bounding[1],self.camera_bounding[2], self.camera_bounding[3]))
         rev_wide_det = rev_wide_det[keep]
         rev_wide_det_old = torch.clone(rev_wide_det)
         rev_wide_det[:,:4] = self.clip_boxes_to_box(rev_wide_det[:,:4])
@@ -448,7 +453,7 @@ class inference2:
 
         if self.use_tracker:
 
-            filtered_dets = self.size_conf_filter(wide_pred, min_size = 0, min_conf = 0.9)
+            filtered_dets = self.size_conf_filter(wide_pred, min_size = 10, min_conf = 0.8)
 
             # Tracker
             numpy_boxes = filtered_dets.cpu().numpy()
