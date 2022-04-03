@@ -3,11 +3,22 @@
 from flask import Flask, jsonify
 import rospy
 from traffic_light_detector.msg import bbox_msg, bbox_array_msg
+from sensor_msgs.msg import Image as SensorImage 
 import json
 import urllib3
+import numpy as np
 
 app = Flask(__name__)
 http = urllib3.PoolManager()
+
+def raw_wide_img_user(data):
+    frame_height = data.height
+    frame_width = data.width
+    
+    frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
+    print("app received the frame", frame.shape)
+
+
 def annotation_annotation_user(data):
     # box_count = data.box_count
     bboxes = data.bbox_array
@@ -21,9 +32,16 @@ def annotation_annotation_user(data):
         "xmax":str(bbox.xmax),
         "ymax":str(bbox.ymax),
         "frameid":"0"
+        # 'type':"100",
+        # "xmin":"100",
+        # "ymin":"100",
+        # "xmax":"100",
+        # "ymax":"100",
+        # "frameid":"0"
         }
+        json_annotations = json.dumps(annotation,indent=2)
         url="https://sample-node-phase1.herokuapp.com/trafficlight"
-        res = http.request('POST', url, headers={'Content-Type': 'application/json'},body=annotation)
+        res = http.request('POST', url, headers={'Content-Type': 'application/json'},body=json_annotations)
         print(res.status)  
         print(res.data)
 
@@ -58,6 +76,7 @@ def mobile_app():
     rospy.loginfo("mobile app initiated...")
     rospy.init_node('mobile_app', anonymous = True)
     rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, annotation_annotation_user)
+    rospy.Subscriber('/raw_wide_img', SensorImage, raw_wide_img_user )
     rospy.spin()
 
 

@@ -115,11 +115,12 @@ class Colors:
         return tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4))
 
 class inference2:
-    def  __init__(self, use_tracker = False):
+    def  __init__(self, use_tracker = False, mobile_app_enable = False):
 
         self.colors = Colors()
         self.model = DetectMultiBackend(weights, device=device, data=data)
         self.use_tracker = use_tracker
+        self.mobile_app_enable = mobile_app_enable
         if use_tracker:
             self.tracker = Sort(max_age=10, min_hits=4, use_dlib = False, min_age = 0)
         self.names = self.model.names
@@ -445,8 +446,8 @@ class inference2:
             track_out = self.tracker.update(numpy_boxes)
             track_out_torch = torch.from_numpy(track_out)
 
-
-            annotations = self.get_annotations(track_out_torch)
+            if (self.mobile_app_enable):
+                annotations = self.get_annotations(track_out_torch)
             # Visualization with tracker
             for *xyxy, id_val, cls in track_out_torch:
                 c = int(cls)  # integer class
@@ -454,7 +455,8 @@ class inference2:
                 annotator_wid.box_label(xyxy, label, color=self.colors(0, True))
 
         else:
-            annotations = self.get_annotations(wide_pred)
+            if (self.mobile_app_enable):
+                annotations = self.get_annotations(wide_pred)
             for *xyxy, conf, cls in wide_pred:
                 c = int(cls)  # integer class
                 label = f'{self.names[c]} {conf:.2f}'
@@ -464,7 +466,10 @@ class inference2:
 
         im_view_wid = annotator_wid.result()
 
-        return im_view_wid,annotations
+        if (self.mobile_app_enable):
+            return im_view_wid,annotations, img_wide
+        else:
+            return im_view_wid
 
     def get_annotations(self, pred):
 

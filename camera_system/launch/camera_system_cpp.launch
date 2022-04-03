@@ -2,7 +2,8 @@
     <arg name="camera_count" default="2" />   <!-- 0-video_feed, 1-single_camera_feed, 2-multi_camera_feed -->
     <arg name="camera_feed" default="false" />
     <arg name="traffic_light_detection" default="true" />
-    <arg name="lane_detection" default="true" />
+    <arg name="lane_detection" default="false" />
+    <arg name="mobile_app_enable" default= "true" />
 
     <arg name="frame_rate" default="30" />
     <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />
@@ -46,6 +47,7 @@
     <include if="$(eval traffic_light_detection == true)" file="/home/fyp/catkin_ws/src/traffic_light_detector/launch/traffic_light_detector.launch">
         <arg name="cam_count" value="$(arg camera_count)" />   
         <arg name="frame_rate" value="$(arg frame_rate)" />
+        <arg name="mobile_app_enable" value= "$(arg mobile_app_enable)" />
     </include>
 
     <include if="$(eval lane_detection == true)" file="/home/fyp/catkin_ws/src/lane_detector/launch/lane_detection.launch">  
