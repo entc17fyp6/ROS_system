@@ -427,7 +427,7 @@ class inference2:
 
         ## send narrow image with annotations for the annotation app if there are bboxes and with 3 second gap
         if (self.traffic_light_annotator_app_enable and ((time.time()-self.old_annotation_calc_time)>3) and (len(narrow_pred)>0)):
-            narrow_annotations = self.get_annotations(narrow_pred)
+            narrow_annotations = self.get_annotations(narrow_pred.detach().clone())
             self.old_annotation_calc_time = time.time()
         else:
             narrow_annotations = None

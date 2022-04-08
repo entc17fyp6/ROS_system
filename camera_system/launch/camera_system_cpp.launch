@@ -1,10 +1,10 @@
 <launch>
-    <arg name="camera_count" default="2" />   <!-- 0-video_feed, 1-single_camera_feed, 2-multi_camera_feed -->
-    <arg name="camera_feed" default="false" />
+    <arg name="camera_count" default="2" />   <!-- 1-single_camera_feed, 2-multi_camera_feed -->
+    <arg name="camera_feed" default="false" /> <!-- true-camera_feed, false-video_feed -->
     <arg name="traffic_light_detection" default="true" />
     <arg name="lane_detection" default="false" />
     <arg name="mobile_app_enable" default= "false" />
-    <arg name="traffic_light_annotator_app_enable" default="false" />
+    <arg name="traffic_light_annotator_app_enable" default="true" />
 
     <arg name="frame_rate" default="30" />
     <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />

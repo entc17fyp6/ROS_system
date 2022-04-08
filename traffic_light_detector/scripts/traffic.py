@@ -41,7 +41,7 @@ def dual_frame_callback(data):
     t1 = time.time()
     inference_output = inference2.inference2(narrow_frame,wide_frame) #{"output_img", "all_annotations","narrow_raw_img", "narrow_annotations"}
     t2 = time.time()
-    print("dual inference time",(t2-t1)*1000)
+    # print("dual inference time",(t2-t1)*1000)
 
     frame = inference_output["output_img"]
     
@@ -98,17 +98,17 @@ def dual_frame_callback(data):
                 annotation_app_msg_obj.bbox_array.append(bbox_data)
 
             annotation_app_publisher.publish(annotation_app_msg_obj)
+            print("publishedd to annotator")
 
 
 def single_frame_callback(data):
-    global old_annotation_calc_time
     
     frame_height = data.height
     frame_width = data.width
     
     t1 = time.time()
     frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
-    inference_output = inference.inference(frame)
+    inference_output = inference.inference(frame.copy())
     t2 = time.time()
     print("single inference time",(t2-t1)*1000)
 
@@ -153,19 +153,16 @@ def single_frame_callback(data):
                 annotation_app_msg_obj.img_narrow.width = img_width        
                 annotation_app_msg_obj.img_narrow.encoding = "rgb8"               
                 annotation_app_msg_obj.img_narrow.is_bigendian = False            
-                annotation_app_msg_obj.img_narrow.step = 3 * img_width     
+                annotation_app_msg_obj.img_narrow.step = 3 * img_width  
                 annotation_app_msg_obj.img_narrow.data = frame.tobytes()
 
                 annotation_app_msg_obj.box_count = len(all_annotations)
                 annotation_app_msg_obj.bbox_array = annotations_array.bbox_array
 
                 annotation_app_publisher.publish(annotation_app_msg_obj)
-                old_annotation_calc_time = time.time()
 
 
 def traffic_light_detector():
-    global mobile_app_enable,old_annotation_calc_time
-    old_annotation_calc_time = time.time()
     
     rospy.loginfo("Traffic light detector initiated...")
     rospy.init_node('traffic', anonymous = True)
