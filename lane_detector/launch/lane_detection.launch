@@ -10,12 +10,12 @@
     </node>
 
 
-    <node 	pkg="rviz"
+    <!-- <node 	pkg="rviz"
             type="rviz"
             name="$(anon rviz)"
             output="screen"
             args="-d /home/fyp/catkin_ws/src/lane_detector/rviz/single_cam_rviz_config.rviz"
 
-    ></node>
+    ></node> -->
 
 </launch>

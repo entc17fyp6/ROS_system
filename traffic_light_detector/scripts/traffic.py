@@ -182,7 +182,7 @@ if __name__ == '__main__':
         mobile_app_enable = bool(rospy.get_param("mobile_app_enable"))
         traffic_light_annotator_app_enable = bool(rospy.get_param("traffic_light_annotator_app_enable"))
         inference = inference(use_tracker = False,mobile_app_enable = mobile_app_enable,traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
-        inference2 = inference2(use_tracker=True, mobile_app_enable=mobile_app_enable, traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
+        inference2 = inference2(use_tracker=False, mobile_app_enable=mobile_app_enable, traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
         traffic_light_detector()
     except rospy.ROSInterruptException:
         pass

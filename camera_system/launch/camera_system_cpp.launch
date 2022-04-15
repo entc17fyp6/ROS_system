@@ -4,7 +4,7 @@
     <arg name="traffic_light_detection" default="true" />
     <arg name="lane_detection" default="false" />
     <arg name="mobile_app_enable" default= "false" />
-    <arg name="traffic_light_annotator_app_enable" default="true" />
+    <arg name="traffic_light_annotator_app_enable" default="false" />
 
     <arg name="frame_rate" default="30" />
     <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />
@@ -56,6 +56,34 @@
         <arg name="frame_rate" value="$(arg frame_rate)" />
     </include>
 
+
+    <node 	
+            if="$(eval arg('traffic_light_detection') and arg('lane_detection'))"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/traffic_lane.rviz"
+
+    ></node>
+    <node 	
+            if="$(eval arg('traffic_light_detection') and arg('lane_detection')== false)"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/traffic.rviz"
+
+    ></node>
+    <node 	
+            if="$(eval arg('traffic_light_detection')==false and arg('lane_detection'))"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/lane.rviz"
+
+    ></node>
 
 
 </launch>

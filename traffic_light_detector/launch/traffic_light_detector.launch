@@ -29,14 +29,14 @@
     </node>
 
 	<node pkg="traffic_light_detector"
-	  	  type="test_app_2.py"
+	  	  type="test_app_3.py"
 	  	  name="mobile_app"
 	  	  output="screen"
 	>
     </node>
 
 
-	<group if="$(eval cam_count == 2)">
+	<!-- <group if="$(eval cam_count == 2)">
         <node 	pkg="rviz"
 				type="rviz"
 				name="$(anon rviz)"
@@ -52,7 +52,7 @@
 				output="screen"
 	            args="-d /home/fyp/catkin_ws/src/traffic_light_detector/rviz/single_cam_rviz_config.rviz"
         ></node>
-    </group> 
+    </group>  -->
 
 
 	

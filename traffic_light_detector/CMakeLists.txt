@@ -189,6 +189,7 @@ catkin_install_python(PROGRAMS
   scripts/inferencing/inference.py
   scripts/inferencing/inference2.py
   scripts/app/test_app_2.py
+  scripts/app/test_app_3.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 ## Mark executables for installation

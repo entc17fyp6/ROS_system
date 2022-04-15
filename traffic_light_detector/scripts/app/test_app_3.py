@@ -14,7 +14,7 @@ import cv2
 app = Flask(__name__)
 http = urllib3.PoolManager()
 
-def annotation_app_data_user(data):
+def annotation_app_data_send(data):
     global count 
     bboxes = data.bbox_array
     frame_height = data.img_narrow.height
@@ -22,7 +22,7 @@ def annotation_app_data_user(data):
     
     frame_binary = data.img_narrow.data
     frame = np.frombuffer(data.img_narrow.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
-    image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY )
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY )
     print("Image sending")
     url="https://sample-node-phase1.herokuapp.com/image"
     imencoded = cv2.imencode(".jpg", frame)[1]
@@ -46,7 +46,6 @@ def annotation_app_data_user(data):
             }
         }
         label_sample.append(annotation)
-    
     json_annotations = {"label_sample":label_sample}
     json_annotations = json.dumps(json_annotations,indent=2)
     json_file_name = "/home/fyp/catkin_ws/src/traffic_light_detector/scripts/app/json_data"+str(count)+".json"
@@ -65,7 +64,7 @@ def annotation_app_data_user(data):
     count += 1
 
 
-def annotation_annotation_user(data):
+def mobile_app_data_send(data):
     # box_count = data.box_count
     bboxes = data.bbox_array
     
@@ -86,7 +85,8 @@ def annotation_annotation_user(data):
         # "frameid":"0"
         }
         json_annotations = json.dumps(annotation,indent=2)
-        url="https://sample-node-phase1.herokuapp.com/trafficlight"
+        url="https://webapp-fyp.herokuapp.com/"
+        # url="https://sample-node-phase1.herokuapp.com/trafficlight"
         res = http.request('POST', url, headers={'Content-Type': 'application/json'},body=json_annotations)
         print(res.status)  
         print(res.data)
@@ -121,8 +121,8 @@ def annotation_annotation_user(data):
 def mobile_app():
     rospy.loginfo("mobile app initiated...")
     rospy.init_node('mobile_app', anonymous = True)
-    rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, annotation_annotation_user)
-    rospy.Subscriber('/annotation_app_data', annotation_app_msg, annotation_app_data_user )
+    rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, annotation_app_data_send)
+    rospy.Subscriber('/annotation_app_data', annotation_app_msg, mobile_app_data_send )
     rospy.spin()
 
 
