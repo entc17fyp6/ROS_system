@@ -463,19 +463,17 @@ class inference2:
             if (self.mobile_app_enable):
                 all_annotations = self.get_annotations(track_out_torch)
             # Visualization with tracker
-            for *xyxy, id_val, cls in track_out_torch:
-                c = int(cls)  # integer class
-                label = str(int(id_val))
-                annotator_wid.box_label(xyxy, label, color=self.colors(0, True))
-
+            # for *xyxy, id_val, cls in track_out_torch:
+            #     c = int(cls)  # integer class
+            #     label = str(int(id_val))
+            #     annotator_wid.box_label(xyxy, label, color=self.colors(0, True))
         else:
             if (self.mobile_app_enable):
                 all_annotations = self.get_annotations(wide_pred)
-            for *xyxy, conf, cls in wide_pred:
-                c = int(cls)  # integer class
-                label = f'{self.names[c]} {conf:.2f}'
-                # label = "out"
-                annotator_wid.box_label(xyxy, label, color=self.colors(c, True))
+        for *xyxy, conf, cls in wide_pred:
+            c = int(cls)  # integer class
+            label = f'{self.names[c]} {conf:.2f}'
+            annotator_wid.box_label(xyxy, label, color=self.colors(c, True))
             
 
         im_view_wid = annotator_wid.result()
@@ -494,17 +492,21 @@ class inference2:
         
         if len(pred):
     
-            for *xyxy, conf, cls in (pred):
+            for *xyxy, id_val, cls in (pred):
                 
                 xmin, ymin, xmax, ymax = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
                 c = int(cls)  # integer class
                 label = f'{self.names[c]}'
 
+                if not self.use_tracker:
+                    id_val= None
+
                 annotation = {'type':label,
                             "xmin":xmin,
                             "ymin":ymin,
                             "xmax":xmax,
-                            "ymax":ymax
+                            "ymax":ymax,
+                            "idval": id_val
                             }
                 annotations.append(annotation)
 

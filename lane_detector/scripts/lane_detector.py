@@ -94,7 +94,7 @@ class lane_detector:
         for polar in polar_list:
 
             a,b = self.polar2cart(polar[0], polar[1])
-            y = np.array([295,590,450])
+            y = np.array([350,590,450])
             x = (y - b)/a
             
             image = cv2.line(image, (int(x[0]), int(y[0])), (int(x[1]), int(y[1])), (0, 0, 128), 2)
@@ -104,8 +104,8 @@ class lane_detector:
 
     def draw_text(self, img, label_point, text, color):  # for highlighted text
 
-        font_scale = 0.9
-        thickness = 5
+        font_scale = 0.5
+        thickness = 4
         text_thickness = 2
         font = cv2.FONT_HERSHEY_SIMPLEX
         text_size, baseline = cv2.getTextSize(str(text), font, font_scale, thickness)
