@@ -16,13 +16,17 @@ from tracking import Sort
 
 import rospy
 from sensor_msgs.msg import Image as SensorImage
+from std_msgs.msg import Float32
 
 from torch2trt import TRTModule
 
-lane_detector_publisher = rospy.Publisher('/lane_detector_output', SensorImage , queue_size = 1)
 
 
 use_tensorRT = False
+lane_departure_warning_enable = True
+
+lane_departure_warning_publisher = rospy.Publisher('/lane_departure_warning', Float32, queue_size=1)
+lane_detector_publisher = rospy.Publisher('/lane_detector_output', SensorImage , queue_size = 1)
 
 model_path = '/media/fyp/sdCard/lane_detector/models/ultrafast_Ceylane.pth'
 trt_model_path = '/media/fyp/sdCard/lane_detector/models/ultrafast_Ceylane_trt.pth'
@@ -85,14 +89,16 @@ class lane_detector:
         theta = math.atan(-a)
         return rho,theta
 
-    def draw_lines(self, polar_list, image):
+    def draw_lines(self,polar_list, image):
 
         for polar in polar_list:
+
             a,b = self.polar2cart(polar[0], polar[1])
-            y = np.array([295,590])
+            y = np.array([295,590,450])
             x = (y - b)/a
             
-            image = cv2.line(image, (int(x[0]), int(y[0])), (int(x[1]), int(y[1])), (0, 255, 0), 2)
+            image = cv2.line(image, (int(x[0]), int(y[0])), (int(x[1]), int(y[1])), (0, 0, 128), 2)
+            image = self.draw_text(image, (int(x[2]),int(y[2])), str(int(polar[4])),color_map["cyan"] )
             
         return image
 
@@ -160,6 +166,9 @@ class lane_detector:
                         single_lane.append(list(ppp2))
                         cv2.circle(vis,ppp,5,(0,255,0),-1)
                 all_lanes.append(single_lane)
+                
+                if i == 0 or i == 3: ## track only ego lanes
+                    continue
 
                 if (self.use_tracker):                
                     if len(single_lane) >= 10:
@@ -178,13 +187,19 @@ class lane_detector:
                     polar = list(self.cart2polar(a, b))
                     polar_coords.append(polar)
 
+        beta_out = None
         if (self.use_tracker):
             polar_coords = np.array(polar_coords)
+
+            if (len(polar_coords)==2):
+                beta = polar_coords[0][1]+polar_coords[1][1]
+                if (abs(beta) > 0.8):
+                    beta_out = beta
 
             tracked_coords = self.tracker.update(polar_coords)
             vis = self.draw_lines(tracked_coords,vis)
 
-        return vis
+        return vis,beta_out
 
 
 def lane_detector_callback(data):
@@ -192,7 +207,7 @@ def lane_detector_callback(data):
     frame_height = data.height
     frame_width = data.width    
     frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
-    frame = lane_detector.inference(frame)
+    frame,beta = lane_detector.inference(frame)
 
     out_frame = SensorImage() # done
     out_frame.header.stamp = rospy.Time.now() # done
@@ -204,6 +219,8 @@ def lane_detector_callback(data):
     out_frame.data = frame.tobytes()
 
     lane_detector_publisher.publish(out_frame)
+    if (lane_departure_warning_enable and (beta != None) ):
+        lane_departure_warning_publisher.publish(beta)
 
 
 

@@ -10,6 +10,13 @@
     </node>
 
 
+	<node pkg="lane_detector"
+	  	  type="mobile_app_lane_departure_data_send.py"
+	  	  name="mobile_app_lane_departure"
+	  	  output="screen"
+	>
+    </node>
+
     <!-- <node 	pkg="rviz"
             type="rviz"
             name="$(anon rviz)"

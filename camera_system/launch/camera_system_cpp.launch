@@ -4,7 +4,7 @@
     <arg name="traffic_light_detection" default="true" />
     <arg name="lane_detection" default="false" />
     <arg name="mobile_app_enable" default= "false" />
-    <arg name="traffic_light_annotator_app_enable" default="false" />
+    <arg name="traffic_light_annotator_app_enable" default="true" />
 
     <arg name="frame_rate" default="30" />
     <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />

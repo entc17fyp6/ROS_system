@@ -22,12 +22,15 @@ from sensor_msgs.msg import Image as SensorImage
 from camera_system.msg import img_pair_msg
 from traffic_light_detector.msg import bbox_msg, bbox_array_msg, annotation_app_msg
 
+
+use_tracker = True
+img_height = 1080
+img_width = 1920
+
 traffic_light_publisher = rospy.Publisher('/traffic_light_output', SensorImage , queue_size = 1)
 traffic_light_annotation_publisher = rospy.Publisher('/traffic_light_annotation', bbox_array_msg, queue_size=1)
 annotation_app_publisher = rospy.Publisher('/annotation_app_data', annotation_app_msg, queue_size=1)
 
-img_height = 1080
-img_width = 1920
 
 print("Started traffic light Detector")
 
@@ -181,8 +184,8 @@ if __name__ == '__main__':
         cam_count = int(rospy.get_param("cam_count"))
         mobile_app_enable = bool(rospy.get_param("mobile_app_enable"))
         traffic_light_annotator_app_enable = bool(rospy.get_param("traffic_light_annotator_app_enable"))
-        inference = inference(use_tracker = False,mobile_app_enable = mobile_app_enable,traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
-        inference2 = inference2(use_tracker=False, mobile_app_enable=mobile_app_enable, traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
+        inference = inference(use_tracker = use_tracker,mobile_app_enable = mobile_app_enable,traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
+        inference2 = inference2(use_tracker = use_tracker, mobile_app_enable=mobile_app_enable, traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
         traffic_light_detector()
     except rospy.ROSInterruptException:
         pass
