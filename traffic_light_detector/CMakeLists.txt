@@ -188,8 +188,8 @@ catkin_install_python(PROGRAMS
   scripts/traffic.py
   scripts/inferencing/inference.py
   scripts/inferencing/inference2.py
-  scripts/app/test_app_2.py
-  scripts/app/test_app_3.py
+  scripts/app/mobile_app.py
+  scripts/app/annotation_app.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 ## Mark executables for installation

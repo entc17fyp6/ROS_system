@@ -1,6 +1,9 @@
 <launch>
 	<arg name="frame_rate" default = "30" />
+	<arg name="usb_mobile_app_enable" default = "false" />
+	
 	<param name="frame_rate" value="$(arg frame_rate)"/>
+	<param name="usb_mobile_app_enable" value="$(arg usb_mobile_app_enable)"/>
 
 	<node pkg="lane_detector"
 	  	  type="lane_detector.py"
@@ -10,7 +13,7 @@
     </node>
 
 
-	<node pkg="lane_detector"
+	<node if="$(eval usb_mobile_app_enable == true)" pkg="lane_detector"
 	  	  type="mobile_app_lane_departure_data_send.py"
 	  	  name="mobile_app_lane_departure"
 	  	  output="screen"

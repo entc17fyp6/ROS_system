@@ -19,6 +19,7 @@ def mobile_app_data_send(data):
             json_file.write(usb_data)
     subprocess.call('adb push /home/fyp/catkin_ws/src/lane_detector/scripts/app/lane_departure_data.json /sdcard/Download/fyp',shell = True,  stdout=subprocess.DEVNULL)
     count+=1
+    
 
     
 def mobile_app_lane_departure_warning_system():

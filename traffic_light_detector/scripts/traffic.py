@@ -8,6 +8,7 @@ Created on Tue Jun 8 2021
 import sys
 
 from flask import g
+
 sys.path.append('/home/fyp2selfdriving/ROS/catkin_ws/src/traffic_light_detector/scripts')
 print(sys.path)
 import imp
@@ -41,10 +42,8 @@ def dual_frame_callback(data):
     
     narrow_frame = np.frombuffer(data.im_narrow.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
     wide_frame = np.frombuffer(data.im_wide.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
-    t1 = time.time()
     inference_output = inference2.inference2(narrow_frame,wide_frame) #{"output_img", "all_annotations","narrow_raw_img", "narrow_annotations"}
-    t2 = time.time()
-    # print("dual inference time",(t2-t1)*1000)
+
 
     frame = inference_output["output_img"]
     
@@ -64,6 +63,7 @@ def dual_frame_callback(data):
         if (len(all_annotations)):
             annotations_array = bbox_array_msg()
             annotations_array.box_count = len(all_annotations)
+            annotations_array.bbox_ids = []
             for annotation in all_annotations:
                 bbox_data = bbox_msg()
                 bbox_data.type = annotation['type']
@@ -72,6 +72,7 @@ def dual_frame_callback(data):
                 bbox_data.xmax = int(annotation['xmax'])
                 bbox_data.ymax = int(annotation['ymax'])
                 annotations_array.bbox_array.append(bbox_data)
+                annotations_array.bbox_ids.append(int(annotation['idval']))
 
             traffic_light_annotation_publisher.publish(annotations_array)
 
@@ -108,12 +109,9 @@ def single_frame_callback(data):
     
     frame_height = data.height
     frame_width = data.width
-    
-    t1 = time.time()
+
     frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
     inference_output = inference.inference(frame.copy())
-    t2 = time.time()
-    print("single inference time",(t2-t1)*1000)
 
 
     output_frame = inference_output["output_img"]
@@ -129,13 +127,12 @@ def single_frame_callback(data):
 
     traffic_light_publisher.publish(out_frame)
 
-
-    if (mobile_app_enable or traffic_light_annotator_app_enable):
-        all_annotations = inference_output["all_annotations"]
-        if (all_annotations and len(all_annotations)):
+    if (traffic_light_annotator_app_enable):
+        annotation_app_annotations = inference_output["annotation_app_annotations"]
+        if (len(annotation_app_annotations)):
             annotations_array = bbox_array_msg()
-            annotations_array.box_count = len(all_annotations)
-            for annotation in all_annotations:
+            annotations_array.box_count = len(annotation_app_annotations)
+            for annotation in annotation_app_annotations:
                 bbox_data = bbox_msg()
                 bbox_data.type = annotation['type']
                 bbox_data.xmin = int(annotation['xmin'])
@@ -144,25 +141,41 @@ def single_frame_callback(data):
                 bbox_data.ymax = int(annotation['ymax'])
                 annotations_array.bbox_array.append(bbox_data)
 
-            if (mobile_app_enable):
-                traffic_light_annotation_publisher.publish(annotations_array)
+            annotation_app_msg_obj = annotation_app_msg()
 
-            if (traffic_light_annotator_app_enable and (len(all_annotations)>0) and inference_output["annotation_app_data_available"]):
+            annotation_app_msg_obj.img_narrow.header.stamp = rospy.Time.now() 
+            annotation_app_msg_obj.img_narrow.height = img_height         
+            annotation_app_msg_obj.img_narrow.width = img_width        
+            annotation_app_msg_obj.img_narrow.encoding = "rgb8"               
+            annotation_app_msg_obj.img_narrow.is_bigendian = False            
+            annotation_app_msg_obj.img_narrow.step = 3 * img_width  
+            annotation_app_msg_obj.img_narrow.data = frame.tobytes()
 
-                annotation_app_msg_obj = annotation_app_msg()
+            annotation_app_msg_obj.box_count = len(annotation_app_annotations)
+            annotation_app_msg_obj.bbox_array = annotations_array.bbox_array
 
-                annotation_app_msg_obj.img_narrow.header.stamp = rospy.Time.now() 
-                annotation_app_msg_obj.img_narrow.height = img_height         
-                annotation_app_msg_obj.img_narrow.width = img_width        
-                annotation_app_msg_obj.img_narrow.encoding = "rgb8"               
-                annotation_app_msg_obj.img_narrow.is_bigendian = False            
-                annotation_app_msg_obj.img_narrow.step = 3 * img_width  
-                annotation_app_msg_obj.img_narrow.data = frame.tobytes()
+            annotation_app_publisher.publish(annotation_app_msg_obj)
 
-                annotation_app_msg_obj.box_count = len(all_annotations)
-                annotation_app_msg_obj.bbox_array = annotations_array.bbox_array
 
-                annotation_app_publisher.publish(annotation_app_msg_obj)
+    if (mobile_app_enable):
+        usb_app_annotations = inference_output["usb_app_annotations"]
+        if (len(usb_app_annotations)):
+            annotations_array = bbox_array_msg()
+            annotations_array.box_count = len(usb_app_annotations)
+            annotations_array.bbox_ids = []
+            for annotation in usb_app_annotations:
+                bbox_data = bbox_msg()
+                bbox_data.type = annotation['type']
+                bbox_data.xmin = int(annotation['xmin'])
+                bbox_data.ymin = int(annotation['ymin'])
+                bbox_data.xmax = int(annotation['xmax'])
+                bbox_data.ymax = int(annotation['ymax'])
+                annotations_array.bbox_array.append(bbox_data)
+                annotations_array.bbox_ids.append(int(annotation['idval']))
+
+
+            traffic_light_annotation_publisher.publish(annotations_array)
+
 
 
 def traffic_light_detector():
@@ -182,8 +195,11 @@ def traffic_light_detector():
 if __name__ == '__main__':
     try:
         cam_count = int(rospy.get_param("cam_count"))
-        mobile_app_enable = bool(rospy.get_param("mobile_app_enable"))
+        web_mobile_app_enable = bool(rospy.get_param("web_mobile_app_enable"))
+        usb_mobile_app_enable = bool(rospy.get_param("usb_mobile_app_enable"))
         traffic_light_annotator_app_enable = bool(rospy.get_param("traffic_light_annotator_app_enable"))
+        mobile_app_enable = web_mobile_app_enable or usb_mobile_app_enable
+
         inference = inference(use_tracker = use_tracker,mobile_app_enable = mobile_app_enable,traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
         inference2 = inference2(use_tracker = use_tracker, mobile_app_enable=mobile_app_enable, traffic_light_annotator_app_enable=traffic_light_annotator_app_enable)
         traffic_light_detector()

@@ -16,7 +16,7 @@ from tracking import Sort
 
 # Load model
 device = torch.device('cuda:0')
-weights = '/media/fyp/sdCard/yolov5/models/yolov5s/448_half_batch_1.engine'
+weights = '/media/fyp/sdCard/detectors/traffic_light/yolov5/models/yolov5s/448_half_batch_1.engine'
 data = '/home/fyp/Documents/yolov5/dualcam.yaml'
 imgsz = (448, 448)
 view_img = True
@@ -27,8 +27,9 @@ class Colors:
 
     def __init__(self):
         # hex = matplotlib.colors.TABLEAU_COLORS.values()
-        hex = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
-               '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
+        hex = ('1A9334', '0ff764', '0ff764', '00D4BB', 'FF3838', 'e8f011', 'd47406', 'CB38FF', '2c2d36', '141942')
+        # hex = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
+        #        '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
         self.palette = [self.hex2rgb('#' + c) for c in hex]
         self.n = len(self.palette)
 
@@ -326,13 +327,14 @@ class inference:
         annotator_frame = Annotator(im0, line_width=2)
 
         ## send narrow image with annotations for the annotation app if there are bboxes and with 3 second gap
+        annotation_app_annotations = None
+        annotation_app_data_available = False
         if (self.traffic_light_annotator_app_enable and ((time.time()-self.old_annotation_calc_time)>3) and (len(out_pred)>0)):
-            all_annotations = self.get_annotations(out_pred)
+            annotation_app_annotations = self.get_annotations(out_pred)
             annotation_app_data_available = True
             self.old_annotation_calc_time = time.time()
-        else:
-            all_annotations = None
-            annotation_app_data_available = False
+
+            
 
         if self.use_tracker:
 
@@ -343,31 +345,34 @@ class inference:
             track_out = self.tracker.update(numpy_boxes)
             track_out_torch = torch.from_numpy(track_out)
 
-            if (self.mobile_app_enable and (all_annotations==None)):
-                all_annotations = self.get_annotations(track_out_torch)
+            if (self.mobile_app_enable ):
+                usb_app_annotations = self.get_annotations(track_out_torch)
 
             # Visualization with tracker
-            for *xyxy, id_val, cls in track_out_torch:
-                c = int(cls)  # integer class
-                label = str(int(id_val))
-                annotator_frame.box_label(xyxy, label, color=self.colors(0, True))
+            # for *xyxy, id_val, cls in track_out_torch:
+            #     c = int(cls)  # integer class
+            #     label = str(int(id_val))
+            #     annotator_frame.box_label(xyxy, label, color=self.colors(0, True))
 
         else:
-            if (self.mobile_app_enable and (all_annotations==None)):
-                all_annotations = self.get_annotations(out_pred)
+            if (self.mobile_app_enable):
+                usb_app_annotations = self.get_annotations(out_pred)
 
-            for *xyxy, conf, cls in out_pred:
-                c = int(cls)  # integer class
-                label = f'{self.names[c]} {conf:.2f}'
-                # label = "out"
-                annotator_frame.box_label(xyxy, label, color=self.colors(c, True))
+        for *xyxy, conf, cls in out_pred:
+            c = int(cls)  # integer class
+            label = f'{self.names[c]} {conf:.2f}'
+            # label = "out"
+            annotator_frame.box_label(xyxy, label, color=self.colors(c, False))
             
 
         im_view_wid = annotator_frame.result()
 
-        output_dict = {"output_img":im_view_wid, "all_annotations":None, "annotation_app_data_available":annotation_app_data_available}
-        if (self.mobile_app_enable or self.traffic_light_annotator_app_enable):
-            output_dict['all_annotations'] = all_annotations
+        output_dict = {"output_img":im_view_wid, "annotation_app_annotations":[], "usb_app_annotations":[]}
+        if (self.traffic_light_annotator_app_enable):
+            output_dict['annotation_app_annotations'] = annotation_app_annotations
+        if (self.mobile_app_enable):
+            output_dict['usb_app_annotations'] = usb_app_annotations
+
 
         return output_dict
            
@@ -377,17 +382,21 @@ class inference:
         
         if len(pred):
     
-            for *xyxy, conf, cls in (pred):
+            for *xyxy, id_val, cls in (pred):
                 
                 xmin, ymin, xmax, ymax = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
                 c = int(cls)  # integer class
                 label = f'{self.names[c]}'
 
+                if not self.use_tracker:
+                    id_val= None
+
                 annotation = {'type':label,
                             "xmin":xmin,
                             "ymin":ymin,
                             "xmax":xmax,
-                            "ymax":ymax
+                            "ymax":ymax,
+                            "idval": id_val
                             }
                 annotations.append(annotation)
 

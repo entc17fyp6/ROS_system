@@ -14,8 +14,8 @@ from tracking import Sort
 import json
 # Load model
 device = torch.device('cuda:0')
-weights = '/media/fyp/sdCard/yolov5/models/yolov5s/448_half_batch_2.engine'
-data = '/home/fyp/Documents/yolov5/dualcam.yaml'
+weights = '/media/fyp/sdCard/detectors/traffic_light/yolov5/models/yolov5s/448_half_batch_2.engine'
+data = '/home/fyp/catkin_ws/src/traffic_light_detector/scripts/inferencing/dualcam.yaml'
 imgsz = (448, 448)
 view_img = True
 half = True
@@ -101,8 +101,11 @@ class Colors:
 
     def __init__(self):
         # hex = matplotlib.colors.TABLEAU_COLORS.values()
-        hex = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
-               '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
+        hex = ('1A9334', '0ff764', '0ff764', '00D4BB', 'FF3838', 'e8f011', 'd47406', 'CB38FF', '2c2d36', '141942')
+            
+        # # hex = matplotlib.colors.TABLEAU_COLORS.values()
+        # hex = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
+        #        '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
         self.palette = [self.hex2rgb('#' + c) for c in hex]
         self.n = len(self.palette)
 
@@ -124,7 +127,7 @@ class inference2:
         self.traffic_light_annotator_app_enable = traffic_light_annotator_app_enable
         self.old_annotation_calc_time = time.time()
         if use_tracker:
-            self.tracker = Sort(max_age=5, min_hits=4, use_dlib = False, min_age = 0)
+            self.tracker = Sort(max_age=5, min_hits=4, use_dlib = False, min_age = 5)
         self.names = self.model.names
 
         # Half
@@ -453,7 +456,7 @@ class inference2:
 
         if self.use_tracker:
 
-            filtered_dets = self.size_conf_filter(wide_pred, min_size = 10, min_conf = 0.8)
+            filtered_dets = self.size_conf_filter(wide_pred, min_size =10, min_conf = 0.7)
 
             # Tracker
             numpy_boxes = filtered_dets.cpu().numpy()
@@ -473,7 +476,7 @@ class inference2:
         for *xyxy, conf, cls in wide_pred:
             c = int(cls)  # integer class
             label = f'{self.names[c]} {conf:.2f}'
-            annotator_wid.box_label(xyxy, label, color=self.colors(c, True))
+            annotator_wid.box_label(xyxy, label, color=self.colors(c, False))
             
 
         im_view_wid = annotator_wid.result()

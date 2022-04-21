@@ -1,56 +1,94 @@
 <launch>
-    <arg name="visualize" default="true" />
-    <arg name="video_feed" default="true" />
-    <arg name="camera_feed" default="false" />
-    <arg name="multi_camera_feed" default="false" />
-    <arg name="narrow_AutoExposureTimeUpperLimit" default="1000" />
-    <arg name="wide_AutoExposureTimeUpperLimit" default="2000" />
-    <arg name="should_filter" default="true" />
-    <arg name="fps" default="10" />
-    <arg name="feeder_start_delay" default="20.0" />
-    <arg name="input_video" default="/home/fyp/Desktop/test_colombo.mp4"/>
-    <arg name="save_output" default="false" />
-    <arg name="output_video" default="/home/fyp/Desktop/2_introduction.mp4"/>
+    <arg name="camera_count" default="2" />   <!-- 1-single_camera_feed, 2-multi_camera_feed -->
+    <arg name="camera_feed" default="false" /> <!-- true-camera_feed, false-video_feed -->
+    <arg name="traffic_light_detection" default="true" />
+    <arg name="lane_detection" default="true" />
+    <arg name="usb_mobile_app_enable" default= "true" />
+    <arg name="web_mobile_app_enable" default= "true" />
+    <arg name="traffic_light_annotator_app_enable" default="true" />
 
-    <param name="input_video" value="$(arg input_video)"/>
+    <arg name="frame_rate" default="30" />
+    <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />
+    <arg name="wide_AutoExposureTimeUpperLimit" default="1000" />
+
+    <!-- <arg name="input_narrow_video" default="/media/fyp/sdCard/4_18_videos_near_campus/18-04-2022_10-48_narrow_cam.mp4"/>
+    <arg name="input_wide_video" default="/media/fyp/sdCard/4_18_videos_near_campus/18-04-2022_10-48_wide_cam.mp4"/> -->
+    <arg name="input_narrow_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_narrow_cam.mp4"/>
+    <arg name="input_wide_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_wide_cam.mp4"/>
+
     <param name="narrow_AutoExposureTimeUpperLimit" value="$(arg narrow_AutoExposureTimeUpperLimit)"/>
     <param name="wide_AutoExposureTimeUpperLimit" value="$(arg wide_AutoExposureTimeUpperLimit)"/>
-    <param name="should_filter" value="$(arg should_filter)"/>
-    <param name="fps" value="$(arg fps)"/>
-    <param name="save_output" value="$(arg save_output)"/>
-    <param name="output_video" value="$(arg output_video)"/>
 
-    <node if="$(arg video_feed)" pkg="camera_system"
-        type="image_feeder.py"
+    <param name="camera_count" value="$(arg camera_count)"/>
+    <param name="frame_rate" value="$(arg frame_rate)"/>
+
+    <param name="input_narrow_video" value="$(arg input_narrow_video)"/>
+    <param name="input_wide_video" value="$(arg input_wide_video)"/>
+
+
+
+    <node if="$(eval camera_feed == false)" pkg="camera_system"  
+        type="image_feeder"
         name="image_feeder"
         output="screen"
-                launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " >
+    >
     </node>
 
-    <!-- <node if="$(arg visualize)" pkg="camera_system"
-	  	  type="visualizer.py"
-	  	  name="visualizer"
-	  	  output="screen" 
-	></node> -->
+    <group if="$(eval camera_feed == true)">
+        <node if="$(eval camera_count == 1)" pkg="camera_system"
+            type="single_camera_image_feeder"
+            name="single_camera_image_feeder"
+            output="screen"
+        ></node>
 
-     <node if="$(arg visualize)" pkg="rviz"
-	  	  type="rviz"
-	  	  name="rviz"
-	  	  output="screen"
-                  args="-d /home/fyp/catkin_ws/src/camera_system/rviz/rviz_config.rviz"
-                  launch-prefix="bash -c 'sleep $(arg feeder_start_delay); $0 $@' " 
-	></node>
+        <node if="$(eval camera_count == 2)" pkg="camera_system"
+            type="multi_camera_image_feeder"
+            name="multi_camera_image_feeder"
+            output="screen"
+        ></node>
+    </group>
 
-    <node if="$(arg camera_feed)" pkg="camera_system"
-        type="single_camera_image_feeder.py"
-        name="single_camera_image_feeder"
-        output="screen"
+    <include if="$(eval traffic_light_detection == true)" file="/home/fyp/catkin_ws/src/traffic_light_detector/launch/traffic_light_detector.launch">
+        <arg name="cam_count" value="$(arg camera_count)" />   
+        <arg name="frame_rate" value="$(arg frame_rate)" />
+        <arg name="usb_mobile_app_enable" value= "$(arg usb_mobile_app_enable)" />
+        <arg name="web_mobile_app_enable" value= "$(arg web_mobile_app_enable)" />
+        <arg name="traffic_light_annotator_app_enable" value= "$(arg traffic_light_annotator_app_enable)" />
+    </include>
+
+    <include if="$(eval lane_detection == true)" file="/home/fyp/catkin_ws/src/lane_detector/launch/lane_detection.launch">  
+        <arg name="frame_rate" value="$(arg frame_rate)" />
+        <arg name="usb_mobile_app_enable" value= "$(arg usb_mobile_app_enable)" />
+    </include>
+
+
+    <node 	
+            if="$(eval arg('traffic_light_detection') and arg('lane_detection'))"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/traffic_lane.rviz"
+
+    ></node>
+    <node 	
+            if="$(eval arg('traffic_light_detection') and arg('lane_detection')== false)"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/traffic.rviz"
+
+    ></node>
+    <node 	
+            if="$(eval arg('traffic_light_detection')==false and arg('lane_detection'))"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/lane.rviz"
+
     ></node>
 
-    <node if="$(arg multi_camera_feed)" pkg="camera_system"
-        type="multi_camera_image_feeder.py"
-        name="multi_camera_image_feeder"
-        output="screen"
-    ></node>
 
 </launch>

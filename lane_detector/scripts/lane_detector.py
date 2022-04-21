@@ -22,14 +22,13 @@ from torch2trt import TRTModule
 
 
 
-use_tensorRT = False
-lane_departure_warning_enable = True
+use_tensorRT = True
 
 lane_departure_warning_publisher = rospy.Publisher('/lane_departure_warning', Float32, queue_size=1)
 lane_detector_publisher = rospy.Publisher('/lane_detector_output', SensorImage , queue_size = 1)
 
-model_path = '/media/fyp/sdCard/lane_detector/models/ultrafast_Ceylane.pth'
-trt_model_path = '/media/fyp/sdCard/lane_detector/models/ultrafast_Ceylane_trt.pth'
+model_path = '/media/fyp/sdCard/detectors/lane_detector/models/ultrafast_Ceylane.pth'
+trt_model_path = '/media/fyp/sdCard/detectors/lane_detector/models/ultrafast_Ceylane_trt.pth'
 
 row_anchor = [121, 131, 141, 150, 160, 170, 180, 189, 199, 209, 219, 228, 238, 248, 258, 267, 277, 287]
 
@@ -104,7 +103,7 @@ class lane_detector:
 
     def draw_text(self, img, label_point, text, color):  # for highlighted text
 
-        font_scale = 0.5
+        font_scale = 0.7
         thickness = 4
         text_thickness = 2
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -164,7 +163,7 @@ class lane_detector:
                         ppp = (int(out_j[k, i] * col_sample_w * img_w / 800) - 1, int(img_h * (row_anchor[cls_num_per_lane-1-k]/288)) - 1 )
                         ppp2 = (out_j[k, i] * col_sample_w * img_w / 800 - 1, img_h * (row_anchor[cls_num_per_lane-1-k]/288) - 1 )
                         single_lane.append(list(ppp2))
-                        cv2.circle(vis,ppp,5,(0,255,0),-1)
+                        cv2.circle(vis,ppp,5,(255,69,0),-1)
                 all_lanes.append(single_lane)
                 
                 if i == 0 or i == 3: ## track only ego lanes
@@ -193,8 +192,9 @@ class lane_detector:
 
             if (len(polar_coords)==2):
                 beta = polar_coords[0][1]+polar_coords[1][1]
-                if (abs(beta) > 0.8):
+                if (abs(beta) > 0.7):
                     beta_out = beta
+                    print("lane departure occured. ( beta =",beta,")")
 
             tracked_coords = self.tracker.update(polar_coords)
             vis = self.draw_lines(tracked_coords,vis)
@@ -219,7 +219,8 @@ def lane_detector_callback(data):
     out_frame.data = frame.tobytes()
 
     lane_detector_publisher.publish(out_frame)
-    if (lane_departure_warning_enable and (beta != None) ):
+
+    if (usb_mobile_app_enable and (beta != None) ):
         lane_departure_warning_publisher.publish(beta)
 
 
@@ -233,6 +234,7 @@ def lane_detector_func():
 
 if __name__ == '__main__':
     try:
+        usb_mobile_app_enable = bool(rospy.get_param("usb_mobile_app_enable"))
         lane_detector = lane_detector(use_tracker=True, use_tensorRT = use_tensorRT)
         lane_detector_func()
     except rospy.ROSInterruptException:
