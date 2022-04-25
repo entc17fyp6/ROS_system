@@ -9,7 +9,7 @@
 
 ### rqt graph
 <p align="left" width="100%">
-    <img src="images/rqt_graph.png" width="800">
+    <img src="images/rqt_graph.png" width="1000">
 </p>
 
 
