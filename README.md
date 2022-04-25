@@ -30,6 +30,9 @@
     <arg name="frame_rate" default="30" />
     <arg name="narrow_AutoExposureTimeUpperLimit" default="2000" />
     <arg name="wide_AutoExposureTimeUpperLimit" default="1000" />
+    
+    <arg name="input_narrow_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_narrow_cam.mp4"/>
+    <arg name="input_wide_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_wide_cam.mp4"/>
 
 ```
 
