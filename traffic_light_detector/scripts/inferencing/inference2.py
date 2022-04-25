@@ -232,7 +232,7 @@ class inference2:
         multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
         merge = False  # use merge-NMS
 
-        t = time.time()
+        # t = time.time()
         output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]
         for xi, x in enumerate(prediction):  # image index, image inference
             # Apply constraints
@@ -293,9 +293,9 @@ class inference2:
                     i = i[iou.sum(1) > 1]  # require redundancy
 
             output[xi] = x[i]
-            if (time.time() - t) > time_limit:
-                print(f'WARNING: NMS time limit {time_limit}s exceeded')
-                break  # time limit exceeded
+            # if (time.time() - t) > time_limit:
+            #     print(f'WARNING: NMS time limit {time_limit}s exceeded')
+            #     break  # time limit exceeded
 
         return output
 
@@ -399,28 +399,31 @@ class inference2:
         im = im.transpose((0, 3, 1, 2))[::-1]  # HWC to CHW, BGR to RGB
         im = np.ascontiguousarray(im)
 
-        t1 = self.time_sync()
+        # t1 = self.time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
 
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
-        t2 = self.time_sync()
-        self.dt[0] += t2 - t1
+        # t2 = self.time_sync()
+        # self.dt[0] += t2 - t1
 
         # Inference
 
         pred = self.model(im)
-        t3 = self.time_sync()
-        self.dt[1] += t3 - t2
+        # t3 = self.time_sync()
+        # self.dt[1] += t3 - t2
 
 
         # NMS
   
         pred = self.non_max_suppression(prediction = pred)
-        self.dt[2] += self.time_sync() - t3
-        s = "Detection frame: "
+        # self.dt[2] += self.time_sync() - t1
+        # s = "Detection frame: "
+        # self.seen += 1
+        # print("detection time",self.seen/self.dt[2])
+
 
         narrow_pred = pred[1]
         wide_pred = pred[0]
@@ -433,7 +436,7 @@ class inference2:
             narrow_annotations = self.get_annotations(narrow_pred.detach().clone())
             self.old_annotation_calc_time = time.time()
         else:
-            narrow_annotations = None
+            narrow_annotations = []
 
 
 
@@ -481,7 +484,7 @@ class inference2:
 
         im_view_wid = annotator_wid.result()
 
-        output_dict = {"output_img":im_view_wid, "all_annotations":None, "narrow_annotations":None}
+        output_dict = {"output_img":im_view_wid, "all_annotations":[], "narrow_annotations":[]}
         if (self.traffic_light_annotator_app_enable):
             output_dict["narrow_annotations"] = narrow_annotations
         if (self.mobile_app_enable):

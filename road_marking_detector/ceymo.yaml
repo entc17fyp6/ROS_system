@@ -1,0 +1,9 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: /home/fyp2selfdriving/Documents/Road_marking/ipt_dataset  # dataset root dir
+train: train # train images (relative to 'path') 128 images
+val: test  # val images (relative to 'path') 128 images
+test: test # test images (optional)
+
+# Classes
+nc: 11  # number of classes
+names: ['SA', 'LA', 'RA', 'SLA', 'SRA', 'DM', 'PC', 'JB', 'SL', 'BL', 'CL']  # class names

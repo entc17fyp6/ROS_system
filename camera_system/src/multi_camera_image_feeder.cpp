@@ -140,6 +140,9 @@ void Initialize_cam(CInstantCamera& camera){
         camera.Open();
     }
     camera.ChunkNodeMapsEnable.SetValue(false);
+    // cout << "MaxTransferSize" << camera.GetStreamGrabberNodeMap().GetNode("MaxTransferSize") << endl;
+    // camera.GetStreamGrabberNodeMap().GetNode("MaxTransferSize") = 100;
+    // cout << "MaxTransferSize" << camera.GetStreamGrabberNodeMap().GetNode("MaxTransferSize") << endl;
 
     INodeMap& nodemap = camera.GetNodeMap();
 
@@ -153,6 +156,12 @@ void Initialize_cam(CInstantCamera& camera){
     CFloatParameter (nodemap, "AcquisitionFrameRate").SetValue(fps);
     CEnumParameter (nodemap, "ExposureAuto").SetValue("Continuous");
     CFloatParameter(nodemap, "AutoGainUpperLimit").SetValue(AutoGainUpperLimit);
+
+    // GenApi::INodeMap& stream_nodemap = camera.GetStreamGrabberNodeMap();
+    // cout << "MaxTransferSize before" << camera.GetStreamGrabberNodeMap().GetNode("MaxTransferSize") << endl;
+    // GenApi::CIntegerPtr(stream_nodemap.GetNode("MaxTransferSize"))->SetValue(4194304);
+    // cout << "MaxTransferSize after" << camera.GetStreamGrabberNodeMap().GetNode("MaxTransferSize") << endl;
+
 
     if (cam_name == "Wide"){
         CFloatParameter(nodemap,"AutoExposureTimeUpperLimit").SetValue(wide_AutoExposureTimeUpperLimit);

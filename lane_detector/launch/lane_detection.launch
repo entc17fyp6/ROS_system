@@ -1,8 +1,10 @@
 <launch>
 	<arg name="frame_rate" default = "30" />
+	<arg name="cam_count" default = "2" />
 	<arg name="usb_mobile_app_enable" default = "false" />
 	
 	<param name="frame_rate" value="$(arg frame_rate)"/>
+	<param name="cam_count" value="$(arg cam_count)"/>
 	<param name="usb_mobile_app_enable" value="$(arg usb_mobile_app_enable)"/>
 
 	<node pkg="lane_detector"

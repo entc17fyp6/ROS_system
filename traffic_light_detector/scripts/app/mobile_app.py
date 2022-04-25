@@ -15,33 +15,33 @@ import subprocess
 app = Flask(__name__)
 http = urllib3.PoolManager()
 
-def web_mobile_app_data_send(data):
-    global web_mobile_app_enable
+# def web_mobile_app_data_send(data):
+#     global web_mobile_app_enable
 
-    if (web_mobile_app_enable):
+#     if (web_mobile_app_enable):
 
-        bboxes = data.bbox_array
-        label_sample = []
-        for bbox in bboxes:
-            annotation = {
-                'type':bbox.type,
-                'cordinates':{
-                    "xmin":bbox.xmin,
-                    "ymin":bbox.ymin,
-                    "xmax":bbox.xmax,
-                    "ymax":bbox.ymax
-                }
-            }
-            label_sample.append(annotation)
+#         bboxes = data.bbox_array
+#         label_sample = []
+#         for bbox in bboxes:
+#             annotation = {
+#                 'type':bbox.type,
+#                 'cordinates':{
+#                     "xmin":bbox.xmin,
+#                     "ymin":bbox.ymin,
+#                     "xmax":bbox.xmax,
+#                     "ymax":bbox.ymax
+#                 }
+#             }
+#             label_sample.append(annotation)
         
-        json_annotations = {"label_sample":label_sample}
-        json_annotations = json.dumps(json_annotations,indent=2)
-        http = urllib3.PoolManager()
-        url="https://sample-node-phase1.herokuapp.com/"
-        res = http.request('POST', url, headers={'Content-Type': 'application/json'},body=json_annotations)
-        # print(res.status)  
-        # print(res.data)
-        print("web mobile app data set successfully...!")
+#         json_annotations = {"label_sample":label_sample}
+#         json_annotations = json.dumps(json_annotations,indent=2)
+#         http = urllib3.PoolManager()
+#         url="https://sample-node-phase1.herokuapp.com/"
+#         res = http.request('POST', url, headers={'Content-Type': 'application/json'},body=json_annotations)
+#         # print(res.status)  
+#         # print(res.data)
+#         print("web mobile app data set successfully...!")
 
 def usb_mobile_app_data_send(data):
     global count, usb_mobile_app_enable
@@ -66,9 +66,9 @@ def mobile_app_traffic_light_detection():
     global web_mobile_app_enable, usb_mobile_app_enable
     rospy.loginfo("mobile app initiated...")
     rospy.init_node('mobile_app_traffic_light_detection', anonymous = True)
-    web_mobile_app_enable = bool(rospy.get_param("web_mobile_app_enable"))
+    # web_mobile_app_enable = bool(rospy.get_param("web_mobile_app_enable"))
     usb_mobile_app_enable = bool(rospy.get_param("usb_mobile_app_enable"))
-    rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, web_mobile_app_data_send)
+    # rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, web_mobile_app_data_send)
     rospy.Subscriber('/traffic_light_annotation', bbox_array_msg, usb_mobile_app_data_send)
     rospy.spin()
 

@@ -54,7 +54,7 @@ def annotation_app_data_send(data):
     url="https://sample-node-phase1.herokuapp.com/trafficlight"
     res = http.request('POST', url, headers={'Content-Type': 'application/json'},body=json_annotations)
     print("annotation app data sent successfully...!")  
-    # print(res.data)
+    print(res.data)
 
 
     

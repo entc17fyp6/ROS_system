@@ -20,6 +20,7 @@ from std_msgs.msg import Float32
 
 from torch2trt import TRTModule
 
+import time
 
 
 use_tensorRT = True
@@ -77,6 +78,15 @@ class lane_detector:
             self.net.load_state_dict(self.state_dict)
             self.net.eval()
 
+        self.seen = 0
+        self.dt = 0.0
+
+    def time_sync(self):
+        # pytorch-accurate time
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        return time.time()
+
 
     def polar2cart(self, rho, theta):
         a = -math.tan(theta)
@@ -117,6 +127,9 @@ class lane_detector:
         return img
         
     def inference(self,orig_frame):
+
+        # t1 = self.time_sync()
+
         x_min, y_min = 245,240
         x_max, y_max = x_min+self.img_w, y_min+self.img_h
         orig_frame = orig_frame[y_min:y_max,x_min:x_max]
@@ -145,6 +158,13 @@ class lane_detector:
         loc = np.sum(prob * idx, axis=0)
         out_j = np.argmax(out_j, axis=0)
         loc[out_j == no_of_gridding_cells] = 0
+        
+        # t2 = self.time_sync()
+        # self.dt += t2 -t1
+        # self.seen += 1
+
+        # print("inference time", self.seen/self.dt)
+
         out_j = loc
 
         vis = orig_frame
@@ -227,8 +247,14 @@ def lane_detector_callback(data):
 
 def lane_detector_func():
     rospy.loginfo("Lane detector initiated...")
+    cam_count = int(rospy.get_param("cam_count"))
     rospy.init_node('lane_detector', anonymous = True)
-    rospy.Subscriber('/wide_camera_frame', SensorImage, lane_detector_callback)
+    if (cam_count == 1):
+        rospy.Subscriber('/single_input_frame', SensorImage, lane_detector_callback)
+    elif(cam_count ==2):
+        rospy.Subscriber('/wide_camera_frame', SensorImage, lane_detector_callback)
+    else:
+        print("error")
 
     rospy.spin()
 

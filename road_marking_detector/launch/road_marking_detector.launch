@@ -1,0 +1,23 @@
+<launch>
+	<arg name="frame_rate" default = "30" />
+    <arg name="cam_count" default = "2" />
+
+	<param name="frame_rate" value="$(arg frame_rate)"/>
+    <param name="cam_count" value="$(arg cam_count)"/>
+
+	<node pkg="road_marking_detector"
+	  	  type="road_marking_detector.py"
+	  	  name="road_marking_detector"
+	  	  output="screen"
+	>
+    </node>
+
+    <!-- <node 	pkg="rviz"
+            type="rviz"
+            name="$(anon rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/lane_detector/rviz/single_cam_rviz_config.rviz"
+
+    ></node> -->
+
+</launch>

@@ -12,35 +12,24 @@ from collections import OrderedDict, namedtuple
 import tensorrt as trt 
 import time
 import yaml
-from tracking import Sort
+from tracking.sort import Sort
+
+import rospy
+from sensor_msgs.msg import Image as SensorImage
 
 # Load model
 device = torch.device('cuda:0')
-weights = '/media/fyp/sdCard/detectors/traffic_light/yolov5/models/yolov5s/448_half_batch_1.engine'
-data = '/home/fyp/Documents/yolov5/dualcam.yaml'
-imgsz = (448, 448)
+# weights = 'runs/train/exp4/weights/tensort_batch2/best.engine'
+weights = '/media/fyp/sdCard/detectors/road_marking/road_marking_448_half.engine'
+data = '/media/fyp/sdCard/detectors/road_marking/ceymo.yaml'
+imgsz = [448, 448]
 view_img = True
 half = True
+sources = "streams.txt"
 save_dir = 'runs/detect/experiment'
+use_tracker = False
 
-class Colors:
-
-    def __init__(self):
-        # hex = matplotlib.colors.TABLEAU_COLORS.values()
-        hex = ('1A9334', '0ff764', '0ff764', '00D4BB', 'FF3838', 'e8f011', 'd47406', 'CB38FF', '2c2d36', '141942')
-        # hex = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
-        #        '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
-        self.palette = [self.hex2rgb('#' + c) for c in hex]
-        self.n = len(self.palette)
-
-    def __call__(self, i, bgr=False):
-        c = self.palette[int(i) % self.n]
-        return (c[2], c[1], c[0]) if bgr else c
-
-    @staticmethod
-    def hex2rgb(h):  # rgb order (PIL)
-        return tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4))
-
+road_marking_detector_publisher = rospy.Publisher('/road_marking_detector_output', SensorImage , queue_size = 1)
 
 class DetectMultiBackend(nn.Module):
     # YOLOv5 MultiBackend class for python inference on various backends
@@ -116,33 +105,45 @@ class Annotator:
         # Return annotated image as array
         return np.asarray(self.im)
 
-class inference:
-    def __init__(self, use_tracker = False,  mobile_app_enable = False, traffic_light_annotator_app_enable=False):
+class Colors:
 
+    def __init__(self):
+        # hex = matplotlib.colors.TABLEAU_COLORS.values()
+        hex = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
+               '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
+        self.palette = [self.hex2rgb('#' + c) for c in hex]
+        self.n = len(self.palette)
+
+    def __call__(self, i, bgr=False):
+        c = self.palette[int(i) % self.n]
+        return (c[2], c[1], c[0]) if bgr else c
+
+    @staticmethod
+    def hex2rgb(h):  # rgb order (PIL)
+        return tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4))
+
+class road_marking_detector:
+    def __init__(self, use_tracker):
+        self.device = device
         self.colors = Colors()
-        self.model = DetectMultiBackend(weights, device=device, data=data)
-        self.names = self.model.names
+        self.model = DetectMultiBackend(weights, device=self.device, data=data)
 
-        self.traffic_light_annotator_app_enable = traffic_light_annotator_app_enable
-        self.old_annotation_calc_time = time.time()
+        self.scale_factor = 3
+        self.ipt_transform, self.max_height, self.max_width = self.get_ipt_transform(frame_height=1080, frame_width=1920, scale_factor=self.scale_factor)
+        self.ipt_transform_inverse = np.linalg.inv(self.ipt_transform)
 
         self.use_tracker = use_tracker
-        if use_tracker:
-            self.tracker = Sort(max_age=5, min_hits=4, use_dlib = False, min_age = 4)
-
-        self.mobile_app_enable = mobile_app_enable
 
         # Half
-        # self.half = True
         self.half = half & (device.type != 'cpu')  # FP16 supported on limited backends with CUDA
-        self.stride = 64
         cudnn.benchmark = True  # set True to speed up constant image size inference
 
-        # Run inference
-        self.model.warmup(imgsz=(1, 3, *imgsz), half=half)  # warmup
-        self.dt, self.seen = [0.0, 0.0, 0.0], 0
+        self.model.warmup(imgsz=(1, 3, *imgsz), half=self.half)  # warmup
+        self.tracker = Sort(max_age=4, min_hits=4, use_dlib = False)
+        self.names = self.model.names
 
-
+        self.seen = 0
+        self.dt = 0.0
 
     def time_sync(self):
         # pytorch-accurate time
@@ -159,15 +160,7 @@ class inference:
         y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
         return y
 
-    def scale_coords(self,img1_shape, coords, img0_shape, ratio_pad=None):
-
-        coords[:, [0, 2]] *= img0_shape[1]/img1_shape[0]  # x padding
-        coords[:, [1, 3]] *= img0_shape[0]/img1_shape[1]  # y padding
-
-        self.clip_coords(coords, img0_shape)
-        return coords
-
-    def clip_coords(self,boxes, shape):
+    def clip_coords(self, boxes, shape):
 
         # Clip bounding xyxy bounding boxes to image shape (height, width)
         if isinstance(boxes, torch.Tensor):  # faster individually
@@ -179,9 +172,17 @@ class inference:
             boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, shape[1])  # x1, x2
             boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, shape[0])  # y1, y2
 
-    def box_iou(self,box1, box2):
+    def scale_coords(self, img1_shape, coords, img0_shape, ratio_pad=None):
 
-        def box_area(self, box):
+        coords[:, [0, 2]] *= img0_shape[1]/img1_shape[0]  # x padding
+        coords[:, [1, 3]] *= img0_shape[0]/img1_shape[1]  # y padding
+
+        self.clip_coords(coords, img0_shape)
+        return coords
+
+    def box_iou(self, box1, box2):
+
+        def box_area(box):
             # box = 4xn
             return (box[2] - box[0]) * (box[3] - box[1])
 
@@ -192,18 +193,69 @@ class inference:
         inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
         return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
 
-    def size_conf_filter(self, det, min_size = 5, min_conf = 0.8):
-        choice = det[:,4] > min_conf
-        conf_filtered = det[choice]
-        
-        min_values = torch.minimum(abs(conf_filtered[:,3]-conf_filtered[:,1]),abs(conf_filtered[:,2]-conf_filtered[:,0]))
-        choice_size = min_values > min_size
-        filtered = conf_filtered[choice_size]
-        return filtered
+
+    def get_ipt_transform(self, frame_height, frame_width, scale_factor):   # obatin the inverse perspective transform
+
+        # top_left = (int(0.1823 * frame_width / scale_factor), int(0.7176 * frame_height / scale_factor))
+        # top_right = (int(0.8333 * frame_width / scale_factor), int(0.7176 * frame_height / scale_factor))
+        # bottom_right = (int(1.4167 * frame_width / scale_factor), int(1 * frame_height / scale_factor))
+        # bottom_left = (int(-0.3906 * frame_width / scale_factor), int(1 * frame_height / scale_factor))
+
+        top_left = (int(0.3323 * frame_width / scale_factor), int(0.5176 * frame_height / scale_factor))
+        top_right = (int(0.6833 * frame_width / scale_factor), int(0.5176 * frame_height / scale_factor))
+        bottom_right = (int(1.4167 * frame_width / scale_factor), int(0.85 * frame_height / scale_factor))
+        bottom_left = (int(-0.3906 * frame_width / scale_factor), int(0.85 * frame_height / scale_factor))
+
+        src = np.array((top_left, top_right, bottom_right, bottom_left), np.float32) 
+
+        width_bottom = np.sqrt(((bottom_right[0] - bottom_left[0])**2) + ((bottom_right[1] - bottom_left[1])**2))
+        width_top = np.sqrt(((top_right[0] - top_left[0])**2) + ((top_right[1] - top_left[1])**2))
+
+        height_right = np.sqrt(((top_right[0] - bottom_right[0])**2) + ((top_right[1] - bottom_right[1])**2))
+        height_left = np.sqrt(((top_left[0] - bottom_left[0])**2) + ((top_left[1] - bottom_left[1])**2))
+
+        max_width = max(int(width_bottom), int(width_top))
+        max_height = max(int(height_right), int(height_left))
+
+        dst = np.array([[0, 0], [max_width - 1, 0], [max_width - 1, max_height - 1], [0, max_height - 1]], dtype = "float32")
+
+        ipt_transform = cv2.getPerspectiveTransform(src, dst)
+
+        return ipt_transform, max_height, max_width
+
+    def polygon_from_bboxes(self, bboxes, ipt_transform_inverse, max_height, max_width, scale_factor, input_size):   # convert the bounding box to a 4-sided polygon
 
 
+        polygons = []
+        for bbox in bboxes:
+            polygon = []
+            out_matrix1 = np.matmul(ipt_transform_inverse, np.array([bbox[0] * (max_width / input_size[1]), bbox[1] * (max_height / input_size[0]), 1]).reshape(3,1))
+            out_matrix2 = np.matmul(ipt_transform_inverse, np.array([bbox[2] * (max_width / input_size[1]), bbox[1] * (max_height / input_size[0]), 1]).reshape(3,1))
+            out_matrix3 = np.matmul(ipt_transform_inverse, np.array([bbox[2] * (max_width / input_size[1]), bbox[3] * (max_height / input_size[0]), 1]).reshape(3,1))
+            out_matrix4 = np.matmul(ipt_transform_inverse, np.array([bbox[0] * (max_width / input_size[1]), bbox[3] * (max_height / input_size[0]), 1]).reshape(3,1))
+            polygon.append([int(out_matrix1[0,0] * scale_factor / out_matrix1[2,0]), int(out_matrix1[1,0] * scale_factor / out_matrix1[2,0])])
+            polygon.append([int(out_matrix2[0,0] * scale_factor / out_matrix2[2,0]), int(out_matrix2[1,0] * scale_factor / out_matrix2[2,0])])
+            polygon.append([int(out_matrix3[0,0] * scale_factor / out_matrix3[2,0]), int(out_matrix3[1,0] * scale_factor / out_matrix3[2,0])])
+            polygon.append([int(out_matrix4[0,0] * scale_factor / out_matrix4[2,0]), int(out_matrix4[1,0] * scale_factor / out_matrix4[2,0])])
+            polygons.append(polygon)
+        return polygons
 
-    def non_max_suppression(self,prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
+    def draw_text(self, img, label_point, text, color):  # for highlighted text
+
+        font_scale = 0.9
+        thickness = 5
+        text_thickness = 2
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        text_size, baseline = cv2.getTextSize(str(text), font, font_scale, thickness)
+        text_location = (label_point[0] - 3, label_point[1] + text_size[1] - 41)
+
+        cv2.rectangle(img, (text_location[0] - 2 // 2, text_location[1] - 2 - baseline),
+                    (text_location[0] + text_size[0], text_location[1] + text_size[1]), color, -1)
+        cv2.putText(img, str(text), (text_location[0], text_location[1] + baseline), font, font_scale, (0, 0, 0), text_thickness, 8)
+
+        return img
+
+    def non_max_suppression(self, prediction, conf_thres=0.5, iou_thres=0.45, classes=None, agnostic=True, multi_label=False,
                             labels=(), max_det=300):
         """Runs Non-Maximum Suppression (NMS) on inference results
 
@@ -264,6 +316,9 @@ class inference:
             if classes is not None:
                 x = x[(x[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)]
 
+            # Apply finite constraint
+            # if not torch.isfinite(x).all():
+            #     x = x[torch.isfinite(x).all(1)]
 
             # Check shape
             n = x.shape[0]  # number of boxes
@@ -294,108 +349,99 @@ class inference:
         return output
 
 
-    def inference(self, im0):
+    def inference(self,image):
 
-        # Convert
-        im = cv2.resize(im0.copy(),imgsz,interpolation=cv2.INTER_LINEAR)
+        # t1 = self.time_sync()
 
+        im = cv2.resize(image.copy(),(int(1920 / self.scale_factor),int(1080 / self.scale_factor)))
+        im = cv2.warpPerspective(im, self.ipt_transform, (self.max_width, self.max_height))
+        # t3 = self.time_sync()
+        im = cv2.resize(im, tuple(imgsz))
         im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+
+
         im = np.ascontiguousarray(im)
-        t1 = self.time_sync()
         im = torch.from_numpy(im).to(device)
-        im = im.half() if self.half else im.float()  # uint8 to fp16/32
+        im = im.half() if half else im.float()  # uint8 to fp16/32
         im /= 255  # 0 - 255 to 0.0 - 1.0
+
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
-        t2 = self.time_sync()
-        self.dt[0] += t2 - t1
 
-        # Inference
-
+        #Inference
         pred = self.model(im)
-        t3 = self.time_sync()
-        self.dt[1] += t3 - t2
-
 
         # NMS
         pred = self.non_max_suppression(prediction = pred)
-        out_pred = pred[0]
-        self.dt[2] += self.time_sync() - t3
         s = "Detection frame: "
 
-        out_pred[:, :4] = self.scale_coords(im.shape[2:], out_pred[:, :4], im0.shape).round()
-        annotator_frame = Annotator(im0, line_width=2)
+        wide_pred = pred[0]
+        wide_pred[:, :4] = self.scale_coords(im.shape[2:], wide_pred[:, :4], tuple(imgsz)).round()
 
-        ## send narrow image with annotations for the annotation app if there are bboxes and with 3 second gap
-        annotation_app_annotations = []
-        if (self.traffic_light_annotator_app_enable and ((time.time()-self.old_annotation_calc_time)>3) and (len(out_pred)>0)):
-            annotation_app_annotations = self.get_annotations(out_pred)
-            self.old_annotation_calc_time = time.time()
+        # Tracker
+        numpy_boxes = wide_pred.cpu().numpy()
+        # track_out = self.tracker.update(numpy_boxes)
+        # track_out_torch = torch.from_numpy(track_out)
 
-            
+        # annotator_wid = Annotator(image, line_width=2)
 
-        if self.use_tracker:
+        classeslist = numpy_boxes[:,5]
 
-            filtered_dets = self.size_conf_filter(out_pred, min_size = 15, min_conf = 0.8)
+        # t2 = self.time_sync()
+        # self.dt += t2 - t1
+        # self.seen += 1
 
-            # Tracker
-            numpy_boxes = filtered_dets.cpu().numpy()
-            track_out = self.tracker.update(numpy_boxes)
-            track_out_torch = torch.from_numpy(track_out)
+        # print("inference time", self.seen/self.dt)
 
-            if (self.mobile_app_enable ):
-                usb_app_annotations = self.get_annotations(track_out_torch)
-
-            # Visualization with tracker
-            # for *xyxy, id_val, cls in track_out_torch:
-            #     c = int(cls)  # integer class
-            #     label = str(int(id_val))
-            #     annotator_frame.box_label(xyxy, label, color=self.colors(0, True))
-
-        else:
-            if (self.mobile_app_enable):
-                usb_app_annotations = self.get_annotations(out_pred)
-
-        for *xyxy, conf, cls in out_pred:
-            c = int(cls)  # integer class
-            label = f'{self.names[c]} {conf:.2f}'
-            # label = "out"
-            annotator_frame.box_label(xyxy, label, color=self.colors(c, False))
-            
-
-        im_view_wid = annotator_frame.result()
-
-        output_dict = {"output_img":im_view_wid, "annotation_app_annotations":[], "usb_app_annotations":[]}
-        if (self.traffic_light_annotator_app_enable):
-            output_dict['annotation_app_annotations'] = annotation_app_annotations
-        if (self.mobile_app_enable):
-            output_dict['usb_app_annotations'] = usb_app_annotations
+        polygonlist = self.polygon_from_bboxes(numpy_boxes[:,:4], self.ipt_transform_inverse, self.max_height, self.max_width, self.scale_factor, tuple(imgsz))
+        for q in range(len(classeslist)):
+            points = np.array(polygonlist[q])
+            image = cv2.polylines(image, [points], True, self.colors(int(classeslist[q]), True), thickness = 5)
+            image = self.draw_text(image,(int(polygonlist[q][0][0]), int(polygonlist[q][0][1])), self.names[int(classeslist[q])], self.colors(int(classeslist[q]), True))
 
 
-        return output_dict
-           
-    def get_annotations(self, pred):
+        return image
 
-        annotations = []
-        
-        if len(pred):
+def road_marking_detector_callback(data):
     
-            for *xyxy, id_val, cls in (pred):
-                
-                xmin, ymin, xmax, ymax = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
-                c = int(cls)  # integer class
-                label = f'{self.names[c]}'
+    frame_height = data.height
+    frame_width = data.width    
+    frame = np.frombuffer(data.data, dtype = np.uint8).reshape(frame_height, frame_width, -1)
 
-                if not self.use_tracker:
-                    id_val= None
+    frame = road_marking_detector.inference(image=frame)
 
-                annotation = {'type':label,
-                            "xmin":xmin,
-                            "ymin":ymin,
-                            "xmax":xmax,
-                            "ymax":ymax,
-                            "idval": id_val
-                            }
-                annotations.append(annotation)
+    out_frame = SensorImage()
+    out_frame.header.stamp = rospy.Time.now()
+    out_frame.height = frame.shape[0]        
+    out_frame.width = frame.shape[1]         
+    out_frame.encoding = "rgb8"              
+    out_frame.is_bigendian = False           
+    out_frame.step = 3 * frame.shape[1]      
+    out_frame.data = frame.tobytes()
 
-        return annotations
+    road_marking_detector_publisher.publish(out_frame)
+
+def road_marking_detector_func():
+    rospy.loginfo("Road marking detector initiated...")
+    rospy.init_node('road_marking_detector', anonymous = True)
+    cam_count = int(rospy.get_param("cam_count"))
+
+    if (cam_count == 1):
+        rospy.Subscriber('/single_input_frame', SensorImage, road_marking_detector_callback)
+    elif(cam_count ==2):
+        rospy.Subscriber('/wide_camera_frame', SensorImage, road_marking_detector_callback)
+    else:
+        print("error")
+
+
+    rospy.spin()
+
+if __name__=='__main__':
+    
+    try:
+
+        road_marking_detector = road_marking_detector(use_tracker = use_tracker)
+        road_marking_detector_func()
+
+    except rospy.ROSInterruptException:
+        pass

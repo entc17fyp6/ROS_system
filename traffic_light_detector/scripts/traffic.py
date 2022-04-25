@@ -27,6 +27,7 @@ from traffic_light_detector.msg import bbox_msg, bbox_array_msg, annotation_app_
 use_tracker = True
 img_height = 1080
 img_width = 1920
+min_annotation_count = 2 ## for annotation app
 
 traffic_light_publisher = rospy.Publisher('/traffic_light_output', SensorImage , queue_size = 1)
 traffic_light_annotation_publisher = rospy.Publisher('/traffic_light_annotation', bbox_array_msg, queue_size=1)
@@ -79,7 +80,7 @@ def dual_frame_callback(data):
     if (traffic_light_annotator_app_enable):
         narrow_annotations = inference_output["narrow_annotations"]
          ## send images only if there are all_annotations and after time limit from last publish
-        if (not (narrow_annotations == None)):
+        if (len(narrow_annotations) > min_annotation_count):
             annotation_app_msg_obj = annotation_app_msg()
 
             annotation_app_msg_obj.img_narrow.header.stamp = rospy.Time.now() 
@@ -102,7 +103,7 @@ def dual_frame_callback(data):
                 annotation_app_msg_obj.bbox_array.append(bbox_data)
 
             annotation_app_publisher.publish(annotation_app_msg_obj)
-            print("publishedd to annotator")
+            print("published to annotator")
 
 
 def single_frame_callback(data):
@@ -129,7 +130,7 @@ def single_frame_callback(data):
 
     if (traffic_light_annotator_app_enable):
         annotation_app_annotations = inference_output["annotation_app_annotations"]
-        if (len(annotation_app_annotations)):
+        if (len(annotation_app_annotations)>min_annotation_count):
             annotations_array = bbox_array_msg()
             annotations_array.box_count = len(annotation_app_annotations)
             for annotation in annotation_app_annotations:

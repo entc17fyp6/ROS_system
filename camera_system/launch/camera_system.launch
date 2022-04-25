@@ -1,10 +1,12 @@
 <launch>
     <arg name="camera_count" default="2" />   <!-- 1-single_camera_feed, 2-multi_camera_feed -->
     <arg name="camera_feed" default="false" /> <!-- true-camera_feed, false-video_feed -->
+
     <arg name="traffic_light_detection" default="true" />
     <arg name="lane_detection" default="true" />
+    <arg name="road_marking_detection" default="true" />
+
     <arg name="usb_mobile_app_enable" default= "true" />
-    <arg name="web_mobile_app_enable" default= "true" />
     <arg name="traffic_light_annotator_app_enable" default="true" />
 
     <arg name="frame_rate" default="30" />
@@ -15,6 +17,7 @@
     <arg name="input_wide_video" default="/media/fyp/sdCard/4_18_videos_near_campus/18-04-2022_10-48_wide_cam.mp4"/> -->
     <arg name="input_narrow_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_narrow_cam.mp4"/>
     <arg name="input_wide_video" default="/media/fyp/sdCard/traffic_light_videos/27-02-2022_11-02_wide_cam.mp4"/>
+
 
     <param name="narrow_AutoExposureTimeUpperLimit" value="$(arg narrow_AutoExposureTimeUpperLimit)"/>
     <param name="wide_AutoExposureTimeUpperLimit" value="$(arg wide_AutoExposureTimeUpperLimit)"/>
@@ -48,6 +51,8 @@
         ></node>
     </group>
 
+     <arg name="web_mobile_app_enable" default= "false" />  <!-- ************ do not enable web_mobile_app (conflicts with usb mobile app due to slowness in uploading to internet) *********** -->
+
     <include if="$(eval traffic_light_detection == true)" file="/home/fyp/catkin_ws/src/traffic_light_detector/launch/traffic_light_detector.launch">
         <arg name="cam_count" value="$(arg camera_count)" />   
         <arg name="frame_rate" value="$(arg frame_rate)" />
@@ -58,7 +63,13 @@
 
     <include if="$(eval lane_detection == true)" file="/home/fyp/catkin_ws/src/lane_detector/launch/lane_detection.launch">  
         <arg name="frame_rate" value="$(arg frame_rate)" />
+        <arg name="cam_count" value="$(arg camera_count)" />   
         <arg name="usb_mobile_app_enable" value= "$(arg usb_mobile_app_enable)" />
+    </include>
+
+    <include if="$(eval road_marking_detection == true)" file="/home/fyp/catkin_ws/src/road_marking_detector/launch/road_marking_detector.launch">  
+        <arg name="frame_rate" value="$(arg frame_rate)" />
+        <arg name="cam_count" value="$(arg camera_count)" />   
     </include>
 
 
@@ -66,27 +77,39 @@
             if="$(eval arg('traffic_light_detection') and arg('lane_detection'))"
             pkg="rviz"
             type="rviz"
-            name="$(anon rviz)"
+            name="$(anon traffic_light_lane_rviz)"
             output="screen"
             args="-d /home/fyp/catkin_ws/src/camera_system/rviz/traffic_lane.rviz"
 
     ></node>
+
     <node 	
             if="$(eval arg('traffic_light_detection') and arg('lane_detection')== false)"
             pkg="rviz"
             type="rviz"
-            name="$(anon rviz)"
+            name="$(anon traffic_light_rviz)"
             output="screen"
             args="-d /home/fyp/catkin_ws/src/camera_system/rviz/traffic.rviz"
 
     ></node>
+
     <node 	
             if="$(eval arg('traffic_light_detection')==false and arg('lane_detection'))"
             pkg="rviz"
             type="rviz"
-            name="$(anon rviz)"
+            name="$(anon lane_rviz)"
             output="screen"
             args="-d /home/fyp/catkin_ws/src/camera_system/rviz/lane.rviz"
+
+    ></node>
+
+    <node 	
+            if="$(eval arg('road_marking_detection')==true)"
+            pkg="rviz"
+            type="rviz"
+            name="$(anon road_marking_rviz)"
+            output="screen"
+            args="-d /home/fyp/catkin_ws/src/camera_system/rviz/road_marking.rviz"
 
     ></node>
 
