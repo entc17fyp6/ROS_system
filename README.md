@@ -50,3 +50,4 @@ source devel/setup.bash
 roslaunch camera_system camera_system.launch 
 
 ```
+* The model weight files can be found in this [Drive](https://drive.google.com/drive/folders/1S-5v5dDR4Okf3s6C27R-mVW4k1HKFRx-?usp=sharing) folder.
