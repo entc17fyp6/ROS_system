@@ -51,3 +51,9 @@ roslaunch camera_system camera_system.launch
 
 ```
 * The model weight files can be found in this [Drive](https://drive.google.com/drive/folders/1S-5v5dDR4Okf3s6C27R-mVW4k1HKFRx-?usp=sharing) folder.
+
+## Demonstration video
+
+<p align="center" width="100%">
+    <a href="https://www.youtube.com/watch?v=wBhfgSKXQps" target="_blank"><img src="http://img.youtube.com/vi/wBhfgSKXQps/0.jpg" alt="video link" style="width:640px;height:480px;"></a>
+</p>
